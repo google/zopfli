@@ -50,8 +50,12 @@ static void LoadFile(const char* filename,
 
   if (*outsize && (*out)) {
     size_t testsize = fread(*out, 1, *outsize, file);
-    assert(testsize == *outsize);
-    (void) testsize;
+    if (testsize != *outsize) {
+      /* It could be a directory */
+      free(*out);
+      *out = 0;
+      *outsize = 0;
+    }
   }
 
   assert(!(*outsize) || out);  /* If size is not zero, out must be allocated. */
@@ -170,6 +174,10 @@ void GzipFile(const Options* options,
   unsigned char* out = 0;
   size_t outsize = 0;
   LoadFile(infilename, &in, &insize);
+  if (insize == 0) {
+    fprintf(stderr, "Invalid filename: %s\n", infilename);
+    return;
+  }
   Gzip(options, in, insize, &out, &outsize);
   if (outfilename) {
     SaveFile(outfilename, out, outsize);
@@ -208,34 +216,55 @@ int main(int argc, char* argv[]) {
   int i;
 
   InitOptions(&options);
-  /* Increase number of iterations here for even more compression */
-  options.numiterations = 25;
 
   for (i = 1; i < argc; i++) {
     if (StringsEqual(argv[i], "-v")) options.verbose = 1;
     else if (StringsEqual(argv[i], "-c")) output_to_stdout = 1;
+    else if (StringsEqual(argv[i], "-i5")) options.numiterations = 5;
+    else if (StringsEqual(argv[i], "-i10")) options.numiterations = 10;
+    else if (StringsEqual(argv[i], "-i15")) options.numiterations = 15;
+    else if (StringsEqual(argv[i], "-i25")) options.numiterations = 25;
+    else if (StringsEqual(argv[i], "-i50")) options.numiterations = 50;
+    else if (StringsEqual(argv[i], "-i100")) options.numiterations = 100;
+    else if (StringsEqual(argv[i], "-i250")) options.numiterations = 250;
+    else if (StringsEqual(argv[i], "-i500")) options.numiterations = 500;
+    else if (StringsEqual(argv[i], "-i1000")) options.numiterations = 1000;
     else if (StringsEqual(argv[i], "-h")) {
       fprintf(stderr, "Usage: zopfli [OPTION]... FILE\n"
           "  -h    gives this help\n"
           "  -c    write the result on standard output, instead of disk"
           " filename + '.gz'\n"
-          "  -v    verbose mode\n");
+          "  -v    verbose mode\n"
+          "  -i5 less compression, but faster\n"
+          "  -i10 less compression, but faster\n"
+          "  -i15 default compression, 15 iterations\n"
+          "  -i25 more compression, but slower\n"
+          "  -i50 more compression, but slower\n"
+          "  -i100 more compression, but slower\n"
+          "  -i250 more compression, but slower\n"
+          "  -i500 more compression, but slower\n"
+          "  -i1000 more compression, but slower\n");
       return 0;
     }
-    else filename = argv[i];
   }
 
-  if (filename) {
-    char* outfilename = output_to_stdout ?
-        0 : AddStrings(filename, ".gz");
-    if (options.verbose && outfilename) {
-      fprintf(stderr, "Saving to: %s\n", outfilename);
+  for (i = 1; i < argc; i++) {
+    if (argv[i][0] != '-') {
+      char* outfilename;
+      filename = argv[i];
+      outfilename = output_to_stdout ?
+          0 : AddStrings(filename, ".gz");
+      if (options.verbose && outfilename) {
+        fprintf(stderr, "Saving to: %s\n", outfilename);
+      }
+      GzipFile(&options, filename, outfilename);
+      free(outfilename);
     }
-    GzipFile(&options, filename, outfilename);
-    free(outfilename);
-  } else {
-    fprintf(
-        stderr, "Please provide filename\nFor help, type: %s -h\n", argv[0]);
+  }
+
+  if (!filename) {
+    fprintf(stderr,
+            "Please provide filename\nFor help, type: %s -h\n", argv[0]);
   }
 
   return 0;
