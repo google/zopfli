@@ -665,8 +665,9 @@ void Deflate(const Options* options, int btype, int final,
 #else
   size_t i = 0;
   while (i < insize) {
-    int final2 = final && (i + MASTER_BLOCK_SIZE >= insize);
-    size_t size = final ? insize - i : MASTER_BLOCK_SIZE;
+    int masterfinal = (i + MASTER_BLOCK_SIZE >= insize);
+    int final2 = final && masterfinal;
+    size_t size = masterfinal ? insize - i : MASTER_BLOCK_SIZE;
     DeflatePart(options, btype, final2, in, i, i + size, bp, out, outsize);
     i += size;
   }
