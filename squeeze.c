@@ -205,8 +205,7 @@ static double GetBestLengths(BlockState *s,
                              unsigned short* length_array) {
   /* Best cost to get here so far. */
   size_t blocksize = inend - instart;
-  float* costs = (float*)malloc(sizeof(float) * (blocksize + 1));
-
+  float* costs;
   size_t i = 0, k;
   unsigned short leng;
   unsigned short dist;
@@ -217,9 +216,10 @@ static double GetBestLengths(BlockState *s,
   double result;
   double mincost = GetCostModelMinCost(costmodel, costcontext);
 
-  if (!costs) exit(-1); /* Allocation failed. */
-
   if (instart == inend) return 0;
+
+  costs = (float*)malloc(sizeof(float) * (blocksize + 1));
+  if (!costs) exit(-1); /* Allocation failed. */
 
   InitHash(WINDOW_SIZE, h);
   WarmupHash(in, windowstart, inend, h);

@@ -223,13 +223,13 @@ void BlockSplitLZ77(const Options* options,
   size_t i;
   size_t llpos = 0;
   size_t numblocks = 1;
-  unsigned char* done = (unsigned char*)malloc(llsize);
+  unsigned char* done;
   double splitcost, origcost;
-
-  if (!done) exit(-1); /* Allocation failed. */
 
   if (llsize < 10) return;  /* This code fails on tiny files. */
 
+  done = (unsigned char*)malloc(llsize);
+  if (!done) exit(-1); /* Allocation failed. */
   for (i = 0; i < llsize; i++) done[i] = 0;
 
   lstart = 0;
