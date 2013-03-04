@@ -17,6 +17,11 @@ Author: lode.vandevenne@gmail.com (Lode Vandevenne)
 Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
+/*
+Modified by madler@alumni.caltech.edu (Mark Adler)
+Exposed DeflatePart() as an external function.
+*/
+
 #ifndef ZOPFLI_DEFLATE_H_
 #define ZOPFLI_DEFLATE_H_
 
@@ -40,7 +45,11 @@ btype: the deflate block type. Use 2 for best compression.
 final: whether this is the last section of the input, sets the final bit to the
   last deflate block.
 in: the input bytes
-insize: number of input bytes
+insize (Deflate() only): number of input bytes
+instart (DeflatePart() only): offset of the start of the data to compress at in
+   if instart is not zero, then the data preceding instart will be used as the
+   LZ77 dictionary
+inend (DeflatePart() only): offset + 1 of the end of the data to compress at in
 bp: bit pointer for the output array. This must initially be 0, and for
   consecutive calls must be reused (it can have values from 0-7). This is
   because deflate appends blocks as bit-based data, rather than on byte
@@ -52,6 +61,10 @@ outsize: pointer to the dynamic output array size.
 void Deflate(const Options* options, int btype, int final,
              const unsigned char* in, size_t insize,
              unsigned char* bp, unsigned char** out, size_t* outsize);
+void DeflatePart(const Options* options, int btype, int final,
+                 const unsigned char* in, size_t instart, size_t inend,
+                 unsigned char* bp, unsigned char** out,
+                 size_t* outsize);
 
 /*
 Outputs the tree to a dynamic block (btype 10) according to the deflate

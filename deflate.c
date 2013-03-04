@@ -17,6 +17,11 @@ Author: lode.vandevenne@gmail.com (Lode Vandevenne)
 Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
+/*
+Modified by madler@alumni.caltech.edu (Mark Adler)
+Exposed DeflatePart() as an external function.
+*/
+
 #include "deflate.h"
 
 #include <assert.h>
@@ -640,10 +645,10 @@ previous bytes are used as the initial dictionary for LZ77.
 This function will usually output multiple deflate blocks. If final is 1, then
 the final bit will be set on the last block.
 */
-static void DeflatePart(const Options* options, int btype, int final,
-                        const unsigned char* in, size_t instart, size_t inend,
-                        unsigned char* bp, unsigned char** out,
-                        size_t* outsize) {
+void DeflatePart(const Options* options, int btype, int final,
+                 const unsigned char* in, size_t instart, size_t inend,
+                 unsigned char* bp, unsigned char** out,
+                 size_t* outsize) {
   if (options->blocksplitting) {
     if (options->blocksplittinglast) {
       DeflateSplittingLast(options, btype, final, in, instart, inend,
