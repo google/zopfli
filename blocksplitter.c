@@ -42,7 +42,7 @@ double, i is in range start-end (excluding end).
 static size_t FindMinimum(FindMinimumFun f, void* context,
                           size_t start, size_t end) {
   if (end - start < 1024) {
-    double best = LARGE_FLOAT;
+    double best = ZOPFLI_LARGE_FLOAT;
     size_t result = start;
     size_t i;
     for (i = start; i < end; i++) {
@@ -61,7 +61,7 @@ static size_t FindMinimum(FindMinimumFun f, void* context,
     double vp[NUM];
     size_t besti;
     double best;
-    double lastbest = LARGE_FLOAT;
+    double lastbest = ZOPFLI_LARGE_FLOAT;
     size_t pos = start;
 
     for (;;) {
@@ -102,9 +102,10 @@ dists: ll77 distances
 lstart: start of block
 lend: end of block (not inclusive)
 */
-double EstimateCost(const unsigned short* litlens, const unsigned short* dists,
-                    size_t lstart, size_t lend) {
-  return CalculateBlockSize(litlens, dists, lstart, lend, 2);
+static double EstimateCost(const unsigned short* litlens,
+                           const unsigned short* dists,
+                           size_t lstart, size_t lend) {
+  return ZopfliCalculateBlockSize(litlens, dists, lstart, lend, 2);
 }
 
 typedef struct SplitCostContext {
@@ -129,7 +130,7 @@ static double SplitCost(size_t i, void* context) {
 
 static void AddSorted(size_t value, size_t** out, size_t* outsize) {
   size_t i;
-  APPEND_DATA(value, out, outsize);
+  ZOPFLI_APPEND_DATA(value, out, outsize);
   if (*outsize > 0) {
     for (i = 0; i < *outsize - 1; i++) {
       if ((*out)[i] > value) {
@@ -161,7 +162,7 @@ static void PrintBlockSplitPoints(const unsigned short* litlens,
     for (i = 0; i < llsize; i++) {
       size_t length = dists[i] == 0 ? 1 : litlens[i];
       if (lz77splitpoints[npoints] == i) {
-        APPEND_DATA(pos, &splitpoints, &npoints);
+        ZOPFLI_APPEND_DATA(pos, &splitpoints, &npoints);
         if (npoints == nlz77points) break;
       }
       pos += length;
@@ -215,10 +216,11 @@ static int FindLargestSplittableBlock(
   return found;
 }
 
-void BlockSplitLZ77(const Options* options,
-                    const unsigned short* litlens, const unsigned short* dists,
-                    size_t llsize, size_t maxblocks,
-                    size_t** splitpoints, size_t* npoints) {
+void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
+                          const unsigned short* litlens,
+                          const unsigned short* dists,
+                          size_t llsize, size_t maxblocks,
+                          size_t** splitpoints, size_t* npoints) {
   size_t lstart, lend;
   size_t i;
   size_t llpos = 0;
@@ -280,34 +282,35 @@ void BlockSplitLZ77(const Options* options,
   free(done);
 }
 
-void BlockSplit(const Options* options,
-                const unsigned char* in, size_t instart, size_t inend,
-                size_t maxblocks, size_t** splitpoints, size_t* npoints) {
+void ZopfliBlockSplit(const ZopfliOptions* options,
+                      const unsigned char* in, size_t instart, size_t inend,
+                      size_t maxblocks, size_t** splitpoints, size_t* npoints) {
   size_t pos = 0;
   size_t i;
-  BlockState s;
+  ZopfliBlockState s;
   size_t* lz77splitpoints = 0;
   size_t nlz77points = 0;
-  LZ77Store store;
+  ZopfliLZ77Store store;
 
-  InitLZ77Store(&store);
+  ZopfliInitLZ77Store(&store);
 
   s.options = options;
   s.blockstart = instart;
   s.blockend = inend;
-#ifdef USE_LONGEST_MATCH_CACHE
+#ifdef ZOPFLI_LONGEST_MATCH_CACHE
   s.lmc = 0;
 #endif
 
   *npoints = 0;
   *splitpoints = 0;
 
-  /* Unintuitively, Using a simple LZ77 method here instead of LZ77Optimal
+  /* Unintuitively, Using a simple LZ77 method here instead of ZopfliLZ77Optimal
   results in better blocks. */
-  LZ77Greedy(&s, in, instart, inend, &store);
+  ZopfliLZ77Greedy(&s, in, instart, inend, &store);
 
-  BlockSplitLZ77(options, store.litlens, store.dists, store.size, maxblocks,
-                 &lz77splitpoints, &nlz77points);
+  ZopfliBlockSplitLZ77(options,
+                       store.litlens, store.dists, store.size, maxblocks,
+                       &lz77splitpoints, &nlz77points);
 
   /* Convert LZ77 positions to positions in the uncompressed input. */
   pos = instart;
@@ -315,7 +318,7 @@ void BlockSplit(const Options* options,
     for (i = 0; i < store.size; i++) {
       size_t length = store.dists[i] == 0 ? 1 : store.litlens[i];
       if (lz77splitpoints[*npoints] == i) {
-        APPEND_DATA(pos, splitpoints, npoints);
+        ZOPFLI_APPEND_DATA(pos, splitpoints, npoints);
         if (*npoints == nlz77points) break;
       }
       pos += length;
@@ -324,14 +327,16 @@ void BlockSplit(const Options* options,
   assert(*npoints == nlz77points);
 
   free(lz77splitpoints);
-  CleanLZ77Store(&store);
+  ZopfliCleanLZ77Store(&store);
 }
 
-void BlockSplitSimple(const unsigned char* in, size_t instart, size_t inend,
-                      size_t blocksize, size_t** splitpoints, size_t* npoints) {
+void ZopfliBlockSplitSimple(const unsigned char* in,
+                            size_t instart, size_t inend,
+                            size_t blocksize,
+                            size_t** splitpoints, size_t* npoints) {
   size_t i = instart;
   while (i < inend) {
-    APPEND_DATA(i, splitpoints, npoints);
+    ZOPFLI_APPEND_DATA(i, splitpoints, npoints);
     i += blocksize;
   }
   (void)in;

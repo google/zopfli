@@ -27,8 +27,8 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include "katajainen.h"
 #include "util.h"
 
-void LengthsToSymbols(const unsigned* lengths, size_t n, unsigned maxbits,
-                      unsigned* symbols) {
+void ZopfliLengthsToSymbols(const unsigned* lengths, size_t n, unsigned maxbits,
+                            unsigned* symbols) {
   size_t* bl_count = (size_t*)malloc(sizeof(size_t) * (maxbits + 1));
   size_t* next_code = (size_t*)malloc(sizeof(size_t) * (maxbits + 1));
   unsigned bits, i;
@@ -68,7 +68,7 @@ void LengthsToSymbols(const unsigned* lengths, size_t n, unsigned maxbits,
   free(next_code);
 }
 
-void CalculateEntropy(const size_t* count, size_t n, double* bitlengths) {
+void ZopfliCalculateEntropy(const size_t* count, size_t n, double* bitlengths) {
   static const double kInvLog2 = 1.4426950408889;  /* 1.0 / log(2.0) */
   unsigned sum = 0;
   unsigned i;
@@ -93,9 +93,9 @@ void CalculateEntropy(const size_t* count, size_t n, double* bitlengths) {
   }
 }
 
-void CalculateBitLengths(const size_t* count, size_t n, int maxbits,
-                         unsigned* bitlengths) {
-  int error = LengthLimitedCodeLengths(count, n, maxbits, bitlengths);
+void ZopfliCalculateBitLengths(const size_t* count, size_t n, int maxbits,
+                               unsigned* bitlengths) {
+  int error = ZopfliLengthLimitedCodeLengths(count, n, maxbits, bitlengths);
   (void) error;
   assert(!error);
 }

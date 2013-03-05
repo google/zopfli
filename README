@@ -4,10 +4,11 @@ very good, but slow, deflate or zlib compression.
 zopfli.c is separate from the library and contains an example program to create
 very well compressed gzip files.
 
-The basic functions to compress data are Deflate in deflate.h, ZlibCompress in
-zlib_container.h and GzipCompress in gzip_container.h. Use the Options
-object to set parameters that affect the speed and compression. Use the
-InitOptions function to place the default values in the Options first.
+The basic functions to compress data are ZopfliDeflate in deflate.h,
+ZopfliZlibCompress in zlib_container.h and ZopfliGzipCompress in
+gzip_container.h. Use the ZopfliOptions object to set parameters that affect the
+speed and compression. Use the ZopfliInitOptions function to place the default
+values in the ZopfliOptions first.
 
 Deflate creates a valid deflate stream in memory, see:
 http://www.ietf.org/rfc/rfc1951.txt

@@ -30,7 +30,7 @@ static unsigned long crc_table[256];
 static int crc_table_computed = 0;
 
 /* Makes the table for a fast CRC. */
-void MakeCRCTable() {
+static void MakeCRCTable() {
   unsigned long c;
   int n, k;
   for (n = 0; n < 256; n++) {
@@ -52,8 +52,8 @@ void MakeCRCTable() {
 Updates a running crc with the bytes buf[0..len-1] and returns
 the updated crc. The crc should be initialized to zero.
 */
-unsigned long UpdateCRC(unsigned long crc,
-                        const unsigned char *buf, size_t len) {
+static unsigned long UpdateCRC(unsigned long crc,
+                               const unsigned char *buf, size_t len) {
   unsigned long c = crc ^ 0xffffffffL;
   unsigned n;
 
@@ -66,45 +66,46 @@ unsigned long UpdateCRC(unsigned long crc,
 }
 
 /* Returns the CRC of the bytes buf[0..len-1]. */
-unsigned long CRC(const unsigned char* buf, int len) {
+static unsigned long CRC(const unsigned char* buf, int len) {
   return UpdateCRC(0L, buf, len);
 }
 
 /*
 Compresses the data according to the gzip specification.
 */
-void GzipCompress(const Options* options,
-                  const unsigned char* in, size_t insize,
-                  unsigned char** out, size_t* outsize) {
+void ZopfliGzipCompress(const ZopfliOptions* options,
+                        const unsigned char* in, size_t insize,
+                        unsigned char** out, size_t* outsize) {
   unsigned long crcvalue = CRC(in, insize);
   unsigned char bp = 0;
 
-  APPEND_DATA(31, out, outsize);  /* ID1 */
-  APPEND_DATA(139, out, outsize);  /* ID2 */
-  APPEND_DATA(8, out, outsize);  /* CM */
-  APPEND_DATA(0, out, outsize);  /* FLG */
+  ZOPFLI_APPEND_DATA(31, out, outsize);  /* ID1 */
+  ZOPFLI_APPEND_DATA(139, out, outsize);  /* ID2 */
+  ZOPFLI_APPEND_DATA(8, out, outsize);  /* CM */
+  ZOPFLI_APPEND_DATA(0, out, outsize);  /* FLG */
   /* MTIME */
-  APPEND_DATA(0, out, outsize);
-  APPEND_DATA(0, out, outsize);
-  APPEND_DATA(0, out, outsize);
-  APPEND_DATA(0, out, outsize);
+  ZOPFLI_APPEND_DATA(0, out, outsize);
+  ZOPFLI_APPEND_DATA(0, out, outsize);
+  ZOPFLI_APPEND_DATA(0, out, outsize);
+  ZOPFLI_APPEND_DATA(0, out, outsize);
 
-  APPEND_DATA(2, out, outsize);  /* XFL, 2 indicates best compression. */
-  APPEND_DATA(3, out, outsize);  /* OS follows Unix conventions. */
+  ZOPFLI_APPEND_DATA(2, out, outsize);  /* XFL, 2 indicates best compression. */
+  ZOPFLI_APPEND_DATA(3, out, outsize);  /* OS follows Unix conventions. */
 
-  Deflate(options, 2 /* Dynamic block */, 1, in, insize, &bp, out, outsize);
+  ZopfliDeflate(options, 2 /* Dynamic block */, 1,
+                in, insize, &bp, out, outsize);
 
   /* CRC */
-  APPEND_DATA(crcvalue % 256, out, outsize);
-  APPEND_DATA((crcvalue >> 8) % 256, out, outsize);
-  APPEND_DATA((crcvalue >> 16) % 256, out, outsize);
-  APPEND_DATA((crcvalue >> 24) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA(crcvalue % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((crcvalue >> 8) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((crcvalue >> 16) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((crcvalue >> 24) % 256, out, outsize);
 
   /* ISIZE */
-  APPEND_DATA(insize % 256, out, outsize);
-  APPEND_DATA((insize >> 8) % 256, out, outsize);
-  APPEND_DATA((insize >> 16) % 256, out, outsize);
-  APPEND_DATA((insize >> 24) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA(insize % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((insize >> 8) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((insize >> 16) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((insize >> 24) % 256, out, outsize);
 
   if (options->verbose) {
     fprintf(stderr,

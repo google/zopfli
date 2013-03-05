@@ -46,9 +46,9 @@ static unsigned adler32(const unsigned char* data, size_t size)
   return (s2 << 16) | s1;
 }
 
-void ZlibCompress(const Options* options,
-                  const unsigned char* in, size_t insize,
-                  unsigned char** out, size_t* outsize) {
+void ZopfliZlibCompress(const ZopfliOptions* options,
+                        const unsigned char* in, size_t insize,
+                        unsigned char** out, size_t* outsize) {
   unsigned char bitpointer = 0;
   unsigned checksum = adler32(in, (unsigned)insize);
   unsigned cmf = 120;  /* CM 8, CINFO 7. See zlib spec.*/
@@ -58,16 +58,16 @@ void ZlibCompress(const Options* options,
   unsigned fcheck = 31 - cmfflg % 31;
   cmfflg += fcheck;
 
-  APPEND_DATA(cmfflg / 256, out, outsize);
-  APPEND_DATA(cmfflg % 256, out, outsize);
+  ZOPFLI_APPEND_DATA(cmfflg / 256, out, outsize);
+  ZOPFLI_APPEND_DATA(cmfflg % 256, out, outsize);
 
-  Deflate(options, 2 /* dynamic block */, 1 /* final */,
-      in, insize, &bitpointer, out, outsize);
+  ZopfliDeflate(options, 2 /* dynamic block */, 1 /* final */,
+                in, insize, &bitpointer, out, outsize);
 
-  APPEND_DATA((checksum >> 24) % 256, out, outsize);
-  APPEND_DATA((checksum >> 16) % 256, out, outsize);
-  APPEND_DATA((checksum >> 8) % 256, out, outsize);
-  APPEND_DATA(checksum % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((checksum >> 24) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((checksum >> 16) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA((checksum >> 8) % 256, out, outsize);
+  ZOPFLI_APPEND_DATA(checksum % 256, out, outsize);
 
   if (options->verbose) {
     fprintf(stderr,

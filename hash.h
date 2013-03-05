@@ -18,7 +18,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
 /*
-The hash for FindLongestMatch of lz77.c.
+The hash for ZopfliFindLongestMatch of lz77.c.
 */
 
 #ifndef ZOPFLI_HASH_H_
@@ -26,13 +26,13 @@ The hash for FindLongestMatch of lz77.c.
 
 #include "util.h"
 
-typedef struct Hash {
+typedef struct ZopfliHash {
   int* head;  /* Hash value to index of its most recent occurance. */
   unsigned short* prev;  /* Index to index of prev. occurance of same hash. */
   int* hashval;  /* Index to hash value at this index. */
   int val;  /* Current hash value. */
 
-#ifdef USE_HASH_SAME_HASH
+#ifdef ZOPFLI_HASH_SAME_HASH
   /* Fields with similar purpose as the above hash, but for the second hash with
   a value that is calculated differently.  */
   int* head2;  /* Hash value to index of its most recent occurance. */
@@ -41,28 +41,30 @@ typedef struct Hash {
   int val2;  /* Current hash value. */
 #endif
 
-#ifdef USE_HASH_SAME
+#ifdef ZOPFLI_HASH_SAME
   unsigned short* same;  /* Amount of repetitions of same byte after this .*/
 #endif
-} Hash;
+} ZopfliHash;
 
-/* Allocates and initializes all fields of Hash. */
-void InitHash(size_t window_size, Hash* h);
+/* Allocates and initializes all fields of ZopfliHash. */
+void ZopfliInitHash(size_t window_size, ZopfliHash* h);
 
-/* Frees all fields of Hash. */
-void CleanHash(Hash* h);
+/* Frees all fields of ZopfliHash. */
+void ZopfliCleanHash(ZopfliHash* h);
 
 /*
 Updates the hash values based on the current position in the array. All calls
 to this must be made for consecutive bytes.
 */
-void UpdateHash(const unsigned char* array, size_t pos, size_t end, Hash* h);
+void ZopfliUpdateHash(const unsigned char* array, size_t pos, size_t end,
+                      ZopfliHash* h);
 
 /*
 Prepopulates hash:
-Fills in the initial values in the hash, before UpdateHash can be used
+Fills in the initial values in the hash, before ZopfliUpdateHash can be used
 correctly.
 */
-void WarmupHash(const unsigned char* array, size_t pos, size_t end, Hash* h);
+void ZopfliWarmupHash(const unsigned char* array, size_t pos, size_t end,
+                      ZopfliHash* h);
 
 #endif  /* ZOPFLI_HASH_H_ */

@@ -23,21 +23,21 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-void InitLZ77Store(LZ77Store* store) {
+void ZopfliInitLZ77Store(ZopfliLZ77Store* store) {
   store->size = 0;
   store->litlens = 0;
   store->dists = 0;
 }
 
-void CleanLZ77Store(LZ77Store* store) {
+void ZopfliCleanLZ77Store(ZopfliLZ77Store* store) {
   free(store->litlens);
   free(store->dists);
 }
 
-void CopyLZ77Store(
-    const LZ77Store* source, LZ77Store* dest) {
+void ZopfliCopyLZ77Store(
+    const ZopfliLZ77Store* source, ZopfliLZ77Store* dest) {
   size_t i;
-  CleanLZ77Store(dest);
+  ZopfliCleanLZ77Store(dest);
   dest->litlens =
       (unsigned short*)malloc(sizeof(*dest->litlens) * source->size);
   dest->dists = (unsigned short*)malloc(sizeof(*dest->dists) * source->size);
@@ -52,14 +52,14 @@ void CopyLZ77Store(
 }
 
 /*
-Appends the length and distance to the LZ77 arrays of the LZ77Store.
-context must be a LZ77Store*.
+Appends the length and distance to the LZ77 arrays of the ZopfliLZ77Store.
+context must be a ZopfliLZ77Store*.
 */
-void StoreLitLenDist(unsigned short length, unsigned short dist,
-                     LZ77Store* store) {
-  size_t size2 = store->size;  /* Needed for using APPEND_DATA twice. */
-  APPEND_DATA(length, &store->litlens, &store->size);
-  APPEND_DATA(dist, &store->dists, &size2);
+void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,
+                           ZopfliLZ77Store* store) {
+  size_t size2 = store->size;  /* Needed for using ZOPFLI_APPEND_DATA twice. */
+  ZOPFLI_APPEND_DATA(length, &store->litlens, &store->size);
+  ZOPFLI_APPEND_DATA(dist, &store->dists, &size2);
 }
 
 /*
@@ -77,8 +77,8 @@ static int GetLengthValue(int length, int distance) {
   return distance > 1024 ? length - 1 : length;
 }
 
-void VerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
-                   unsigned short dist, unsigned short length) {
+void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
+                         unsigned short dist, unsigned short length) {
 
   /* TODO(lode): make this only run in a debug compile, it's for assert only. */
   size_t i;
@@ -137,14 +137,15 @@ static const unsigned char* GetMatch(const unsigned char* scan,
   return scan;
 }
 
-#ifdef USE_LONGEST_MATCH_CACHE
+#ifdef ZOPFLI_LONGEST_MATCH_CACHE
 /*
 Gets distance, length and sublen values from the cache if possible.
 Returns 1 if it got the values from the cache, 0 if not.
 Updates the limit value to a smaller one if possible with more limited
 information from the cache.
 */
-int TryGetFromLongestMatchCache(BlockState* s, size_t pos, size_t* limit,
+static int TryGetFromLongestMatchCache(ZopfliBlockState* s,
+    size_t pos, size_t* limit,
     unsigned short* sublen, unsigned short* distance, unsigned short* length) {
   /* The LMC cache starts at the beginning of the block rather than the
      beginning of the whole array. */
@@ -154,20 +155,20 @@ int TryGetFromLongestMatchCache(BlockState* s, size_t pos, size_t* limit,
      that this cache value is not filled in yet. */
   unsigned char cache_available = s->lmc && (s->lmc->length[lmcpos] == 0 ||
       s->lmc->dist[lmcpos] != 0);
-  unsigned char limit_ok_for_cache = cache_available && (*limit == MAX_MATCH ||
-      s->lmc->length[lmcpos] <= *limit ||
-      (sublen && MaxCachedSublen(s->lmc,
+  unsigned char limit_ok_for_cache = cache_available &&
+      (*limit == ZOPFLI_MAX_MATCH || s->lmc->length[lmcpos] <= *limit ||
+      (sublen && ZopfliMaxCachedSublen(s->lmc,
           lmcpos, s->lmc->length[lmcpos]) >= *limit));
 
   if (s->lmc && limit_ok_for_cache && cache_available) {
     if (!sublen || s->lmc->length[lmcpos]
-        <= MaxCachedSublen(s->lmc, lmcpos, s->lmc->length[lmcpos])) {
+        <= ZopfliMaxCachedSublen(s->lmc, lmcpos, s->lmc->length[lmcpos])) {
       *length = s->lmc->length[lmcpos];
       if (*length > *limit) *length = *limit;
       if (sublen) {
-        CacheToSublen(s->lmc, lmcpos, *length, sublen);
+        ZopfliCacheToSublen(s->lmc, lmcpos, *length, sublen);
         *distance = sublen[*length];
-        if (*limit == MAX_MATCH && *length >= MIN_MATCH) {
+        if (*limit == ZOPFLI_MAX_MATCH && *length >= ZOPFLI_MIN_MATCH) {
           assert(sublen[*length] == s->lmc->dist[lmcpos]);
         }
       } else {
@@ -187,7 +188,8 @@ int TryGetFromLongestMatchCache(BlockState* s, size_t pos, size_t* limit,
 Stores the found sublen, distance and length in the longest match cache, if
 possible.
 */
-void StoreInLongestMatchCache(BlockState* s, size_t pos, size_t limit,
+static void StoreInLongestMatchCache(ZopfliBlockState* s,
+    size_t pos, size_t limit,
     const unsigned short* sublen,
     unsigned short distance, unsigned short length) {
   /* The LMC cache starts at the beginning of the block rather than the
@@ -199,28 +201,29 @@ void StoreInLongestMatchCache(BlockState* s, size_t pos, size_t limit,
   unsigned char cache_available = s->lmc && (s->lmc->length[lmcpos] == 0 ||
       s->lmc->dist[lmcpos] != 0);
 
-  if (s->lmc && limit == MAX_MATCH && sublen && !cache_available) {
+  if (s->lmc && limit == ZOPFLI_MAX_MATCH && sublen && !cache_available) {
     assert(s->lmc->length[lmcpos] == 1 && s->lmc->dist[lmcpos] == 0);
-    s->lmc->dist[lmcpos] = length < MIN_MATCH ? 0 : distance;
-    s->lmc->length[lmcpos] = length < MIN_MATCH ? 0 : length;
+    s->lmc->dist[lmcpos] = length < ZOPFLI_MIN_MATCH ? 0 : distance;
+    s->lmc->length[lmcpos] = length < ZOPFLI_MIN_MATCH ? 0 : length;
     assert(!(s->lmc->length[lmcpos] == 1 && s->lmc->dist[lmcpos] == 0));
-    SublenToCache(sublen, lmcpos, length, s->lmc);
+    ZopfliSublenToCache(sublen, lmcpos, length, s->lmc);
   }
 }
 #endif
 
-void FindLongestMatch(BlockState* s, const Hash* h, const unsigned char* array,
+void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
+    const unsigned char* array,
     size_t pos, size_t size, size_t limit,
     unsigned short* sublen, unsigned short* distance, unsigned short* length) {
-  unsigned short hpos = pos & WINDOW_MASK, p, pp;
+  unsigned short hpos = pos & ZOPFLI_WINDOW_MASK, p, pp;
   unsigned short bestdist = 0;
   unsigned short bestlength = 1;
   const unsigned char* scan;
   const unsigned char* match;
   const unsigned char* arrayend;
   const unsigned char* arrayend_safe;
-#if MAX_CHAIN_HITS < WINDOW_SIZE
-  int chain_counter = MAX_CHAIN_HITS;  /* For quitting early. */
+#if ZOPFLI_MAX_CHAIN_HITS < ZOPFLI_WINDOW_SIZE
+  int chain_counter = ZOPFLI_MAX_CHAIN_HITS;  /* For quitting early. */
 #endif
 
   unsigned dist = 0;  /* Not unsigned short on purpose. */
@@ -230,19 +233,19 @@ void FindLongestMatch(BlockState* s, const Hash* h, const unsigned char* array,
   int* hhashval = h->hashval;
   int hval = h->val;
 
-#ifdef USE_LONGEST_MATCH_CACHE
+#ifdef ZOPFLI_LONGEST_MATCH_CACHE
   if (TryGetFromLongestMatchCache(s, pos, &limit, sublen, distance, length)) {
     assert(pos + *length <= size);
     return;
   }
 #endif
 
-  assert(limit <= MAX_MATCH);
-  assert(limit >= MIN_MATCH);
+  assert(limit <= ZOPFLI_MAX_MATCH);
+  assert(limit >= ZOPFLI_MIN_MATCH);
   assert(pos < size);
 
-  if (size - pos < MIN_MATCH) {
-    /* The rest of the code assumes there are at least MIN_MATCH bytes to
+  if (size - pos < ZOPFLI_MIN_MATCH) {
+    /* The rest of the code assumes there are at least ZOPFLI_MIN_MATCH bytes to
        try. */
     *length = 0;
     *distance = 0;
@@ -262,13 +265,13 @@ void FindLongestMatch(BlockState* s, const Hash* h, const unsigned char* array,
 
   assert(pp == hpos);
 
-  dist = p < pp ? pp - p : ((WINDOW_SIZE - p) + pp);
+  dist = p < pp ? pp - p : ((ZOPFLI_WINDOW_SIZE - p) + pp);
 
   /* Go through all distances. */
-  while (dist < WINDOW_SIZE) {
+  while (dist < ZOPFLI_WINDOW_SIZE) {
     unsigned short currentlength = 0;
 
-    assert(p < WINDOW_SIZE);
+    assert(p < ZOPFLI_WINDOW_SIZE);
     assert(p == hprev[pp]);
     assert(hhashval[p] == hval);
 
@@ -282,10 +285,10 @@ void FindLongestMatch(BlockState* s, const Hash* h, const unsigned char* array,
       if (pos + bestlength >= size
           || *(scan + bestlength) == *(match + bestlength)) {
 
-#ifdef USE_HASH_SAME
-        unsigned short same0 = h->same[pos & WINDOW_MASK];
+#ifdef ZOPFLI_HASH_SAME
+        unsigned short same0 = h->same[pos & ZOPFLI_WINDOW_MASK];
         if (same0 > 2 && *scan == *match) {
-          unsigned short same1 = h->same[(pos - dist) & WINDOW_MASK];
+          unsigned short same1 = h->same[(pos - dist) & ZOPFLI_WINDOW_MASK];
           unsigned short same = same0 < same1 ? same0 : same1;
           if (same > limit) same = limit;
           scan += same;
@@ -310,7 +313,7 @@ void FindLongestMatch(BlockState* s, const Hash* h, const unsigned char* array,
     }
 
 
-#ifdef USE_HASH_SAME_HASH
+#ifdef ZOPFLI_HASH_SAME_HASH
     /* Switch to the other hash once this will be more efficient. */
     if (hhead != h->head2 && bestlength >= h->same[hpos] &&
         h->val2 == h->hashval2[p]) {
@@ -326,15 +329,15 @@ void FindLongestMatch(BlockState* s, const Hash* h, const unsigned char* array,
     p = hprev[p];
     if (p == pp) break;  /* Uninited prev value. */
 
-    dist += p < pp ? pp - p : ((WINDOW_SIZE - p) + pp);
+    dist += p < pp ? pp - p : ((ZOPFLI_WINDOW_SIZE - p) + pp);
 
-#if MAX_CHAIN_HITS < WINDOW_SIZE
+#if ZOPFLI_MAX_CHAIN_HITS < ZOPFLI_WINDOW_SIZE
     chain_counter--;
     if (chain_counter <= 0) break;
 #endif
   }
 
-#ifdef USE_LONGEST_MATCH_CACHE
+#ifdef ZOPFLI_LONGEST_MATCH_CACHE
   StoreInLongestMatchCache(s, pos, limit, sublen, bestdist, bestlength);
 #endif
 
@@ -345,20 +348,21 @@ void FindLongestMatch(BlockState* s, const Hash* h, const unsigned char* array,
   assert(pos + *length <= size);
 }
 
-void LZ77Greedy(BlockState* s, const unsigned char* in,
-                size_t instart, size_t inend,
-                LZ77Store* store) {
+void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
+                      size_t instart, size_t inend,
+                      ZopfliLZ77Store* store) {
   size_t i = 0, j;
   unsigned short leng;
   unsigned short dist;
   int lengvalue;
-  size_t windowstart = instart > WINDOW_SIZE ? instart - WINDOW_SIZE : 0;
+  size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
+      ? instart - ZOPFLI_WINDOW_SIZE : 0;
   unsigned short dummysublen[259];
 
-  Hash hash;
-  Hash* h = &hash;
+  ZopfliHash hash;
+  ZopfliHash* h = &hash;
 
-#ifdef LAZY_MATCHING
+#ifdef ZOPFLI_LAZY_MATCHING
   /* Lazy matching. */
   unsigned prev_length = 0;
   unsigned prev_match = 0;
@@ -368,26 +372,27 @@ void LZ77Greedy(BlockState* s, const unsigned char* in,
 
   if (instart == inend) return;
 
-  InitHash(WINDOW_SIZE, h);
-  WarmupHash(in, windowstart, inend, h);
+  ZopfliInitHash(ZOPFLI_WINDOW_SIZE, h);
+  ZopfliWarmupHash(in, windowstart, inend, h);
   for (i = windowstart; i < instart; i++) {
-    UpdateHash(in, i, inend, h);
+    ZopfliUpdateHash(in, i, inend, h);
   }
 
   for (i = instart; i < inend; i++) {
-    UpdateHash(in, i, inend, h);
+    ZopfliUpdateHash(in, i, inend, h);
 
-    FindLongestMatch(s, h, in, i, inend, MAX_MATCH, dummysublen, &dist, &leng);
+    ZopfliFindLongestMatch(s, h, in, i, inend, ZOPFLI_MAX_MATCH, dummysublen,
+                           &dist, &leng);
     lengvalue = GetLengthValue(leng, dist);
 
-#ifdef LAZY_MATCHING
+#ifdef ZOPFLI_LAZY_MATCHING
     /* Lazy matching. */
     prevlengvalue = GetLengthValue(prev_length, prev_match);
     if (match_available) {
       match_available = 0;
       if (lengvalue > prevlengvalue + 1) {
-        StoreLitLenDist(in[i - 1], 0, store);
-        if (lengvalue >= MIN_MATCH && lengvalue < MAX_MATCH) {
+        ZopfliStoreLitLenDist(in[i - 1], 0, store);
+        if (lengvalue >= ZOPFLI_MIN_MATCH && lengvalue < ZOPFLI_MAX_MATCH) {
           match_available = 1;
           prev_length = leng;
           prev_match = dist;
@@ -399,17 +404,17 @@ void LZ77Greedy(BlockState* s, const unsigned char* in,
         dist = prev_match;
         lengvalue = prevlengvalue;
         /* Add to output. */
-        VerifyLenDist(in, inend, i - 1, dist, leng);
-        StoreLitLenDist(leng, dist, store);
+        ZopfliVerifyLenDist(in, inend, i - 1, dist, leng);
+        ZopfliStoreLitLenDist(leng, dist, store);
         for (j = 2; j < leng; j++) {
           assert(i < inend);
           i++;
-          UpdateHash(in, i, inend, h);
+          ZopfliUpdateHash(in, i, inend, h);
         }
         continue;
       }
     }
-    else if (lengvalue >= MIN_MATCH && leng < MAX_MATCH) {
+    else if (lengvalue >= ZOPFLI_MIN_MATCH && leng < ZOPFLI_MAX_MATCH) {
       match_available = 1;
       prev_length = leng;
       prev_match = dist;
@@ -419,26 +424,27 @@ void LZ77Greedy(BlockState* s, const unsigned char* in,
 #endif
 
     /* Add to output. */
-    if (lengvalue >= MIN_MATCH) {
-      VerifyLenDist(in, inend, i, dist, leng);
-      StoreLitLenDist(leng, dist, store);
+    if (lengvalue >= ZOPFLI_MIN_MATCH) {
+      ZopfliVerifyLenDist(in, inend, i, dist, leng);
+      ZopfliStoreLitLenDist(leng, dist, store);
     } else {
       leng = 1;
-      StoreLitLenDist(in[i], 0, store);
+      ZopfliStoreLitLenDist(in[i], 0, store);
     }
     for (j = 1; j < leng; j++) {
       assert(i < inend);
       i++;
-      UpdateHash(in, i, inend, h);
+      ZopfliUpdateHash(in, i, inend, h);
     }
   }
 
-  CleanHash(h);
+  ZopfliCleanHash(h);
 }
 
-void GetLZ77Counts(const unsigned short* litlens, const unsigned short* dists,
-                   size_t start, size_t end,
-                   size_t* ll_count, size_t* d_count) {
+void ZopfliLZ77Counts(const unsigned short* litlens,
+                      const unsigned short* dists,
+                      size_t start, size_t end,
+                      size_t* ll_count, size_t* d_count) {
   size_t i;
 
   for (i = 0; i < 288; i++) {
@@ -452,8 +458,8 @@ void GetLZ77Counts(const unsigned short* litlens, const unsigned short* dists,
     if (dists[i] == 0) {
       ll_count[litlens[i]]++;
     } else {
-      ll_count[GetLengthSymbol(litlens[i])]++;
-      d_count[GetDistSymbol(dists[i])]++;
+      ll_count[ZopfliGetLengthSymbol(litlens[i])]++;
+      d_count[ZopfliGetDistSymbol(dists[i])]++;
     }
   }
 

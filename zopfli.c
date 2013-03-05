@@ -85,10 +85,10 @@ typedef enum {
 /*
 outfilename: filename to write output to, or 0 to write to stdout instead
 */
-void CompressFile(const Options* options,
-                  OutputType output_type,
-                  const char* infilename,
-                  const char* outfilename) {
+static void CompressFile(const ZopfliOptions* options,
+                         OutputType output_type,
+                         const char* infilename,
+                         const char* outfilename) {
   unsigned char* in;
   size_t insize;
   unsigned char* out = 0;
@@ -99,12 +99,13 @@ void CompressFile(const Options* options,
     return;
   }
   if (output_type == OUTPUT_GZIP) {
-    GzipCompress(options, in, insize, &out, &outsize);
+    ZopfliGzipCompress(options, in, insize, &out, &outsize);
   } else if (output_type == OUTPUT_ZLIB) {
-    ZlibCompress(options, in, insize, &out, &outsize);
+    ZopfliZlibCompress(options, in, insize, &out, &outsize);
   } else if (output_type == OUTPUT_DEFLATE) {
     unsigned char bp = 0;
-    Deflate(options, 2 /* Dynamic block */, 1, in, insize, &bp, &out, &outsize);
+    ZopfliDeflate(options, 2 /* Dynamic block */, 1,
+                  in, insize, &bp, &out, &outsize);
   } else {
     assert(0);
   }
@@ -139,13 +140,13 @@ static char StringsEqual(const char* str1, const char* str2) {
 }
 
 int main(int argc, char* argv[]) {
-  Options options;
+  ZopfliOptions options;
   const char* filename = 0;
   int output_to_stdout = 0;
   int i;
   OutputType output_type = OUTPUT_GZIP;
 
-  InitOptions(&options);
+  ZopfliInitOptions(&options);
 
   for (i = 1; i < argc; i++) {
     if (StringsEqual(argv[i], "-v")) options.verbose = 1;
@@ -194,10 +195,9 @@ int main(int argc, char* argv[]) {
         outfilename = AddStrings(filename, ".gz");
       } else if (output_type == OUTPUT_ZLIB) {
         outfilename = AddStrings(filename, ".zlib");
-      } else if (output_type == OUTPUT_DEFLATE) {
-        outfilename = AddStrings(filename, ".deflate");
       } else {
-        assert(0);
+        assert(output_type == OUTPUT_DEFLATE);
+        outfilename = AddStrings(filename, ".deflate");
       }
       if (options.verbose && outfilename) {
         fprintf(stderr, "Saving to: %s\n", outfilename);

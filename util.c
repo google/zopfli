@@ -23,7 +23,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
-int GetDistExtraBits(int dist) {
+int ZopfliGetDistExtraBits(int dist) {
 #ifdef __GNUC__
   if (dist < 5) return 0;
   return (31 ^ __builtin_clz(dist - 1)) - 1; /* log2(dist - 1) - 1 */
@@ -45,7 +45,7 @@ int GetDistExtraBits(int dist) {
 #endif
 }
 
-int GetDistExtraBitsValue(int dist) {
+int ZopfliGetDistExtraBitsValue(int dist) {
 #ifdef __GNUC__
   if (dist < 5) {
     return 0;
@@ -71,7 +71,7 @@ int GetDistExtraBitsValue(int dist) {
 #endif
 }
 
-int GetDistSymbol(int dist) {
+int ZopfliGetDistSymbol(int dist) {
 #ifdef __GNUC__
   if (dist < 5) {
     return dist - 1;
@@ -120,7 +120,7 @@ int GetDistSymbol(int dist) {
 #endif
 }
 
-int GetLengthExtraBits(int l) {
+int ZopfliGetLengthExtraBits(int l) {
   static const int table[259] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1,
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -142,7 +142,7 @@ int GetLengthExtraBits(int l) {
   return table[l];
 }
 
-int GetLengthExtraBitsValue(int l) {
+int ZopfliGetLengthExtraBitsValue(int l) {
   static const int table[259] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 2, 3, 0,
     1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5,
@@ -163,7 +163,7 @@ int GetLengthExtraBitsValue(int l) {
 /*
 Returns symbol in range [257-285] (inclusive).
 */
-int GetLengthSymbol(int l) {
+int ZopfliGetLengthSymbol(int l) {
   static const int table[259] = {
     0, 0, 0, 257, 258, 259, 260, 261, 262, 263, 264,
     265, 265, 266, 266, 267, 267, 268, 268,
@@ -201,7 +201,7 @@ int GetLengthSymbol(int l) {
   return table[l];
 }
 
-void InitOptions(Options* options) {
+void ZopfliInitOptions(ZopfliOptions* options) {
   options->verbose = 0;
   options->numiterations = 15;
   options->blocksplitting = 1;

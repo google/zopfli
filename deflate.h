@@ -17,16 +17,12 @@ Author: lode.vandevenne@gmail.com (Lode Vandevenne)
 Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
-/*
-Modified by madler@alumni.caltech.edu (Mark Adler)
-Exposed DeflatePart() as an external function.
-*/
-
 #ifndef ZOPFLI_DEFLATE_H_
 #define ZOPFLI_DEFLATE_H_
 
 /*
-Functions to compress compatible with the deflate specification.
+Functions to compress according to the DEFLATE specification, using the
+"squeeze" LZ77 compression backend.
 */
 
 #include "util.h"
@@ -45,11 +41,7 @@ btype: the deflate block type. Use 2 for best compression.
 final: whether this is the last section of the input, sets the final bit to the
   last deflate block.
 in: the input bytes
-insize (Deflate() only): number of input bytes
-instart (DeflatePart() only): offset of the start of the data to compress at in
-   if instart is not zero, then the data preceding instart will be used as the
-   LZ77 dictionary
-inend (DeflatePart() only): offset + 1 of the end of the data to compress at in
+insize: number of input bytes
 bp: bit pointer for the output array. This must initially be 0, and for
   consecutive calls must be reused (it can have values from 0-7). This is
   because deflate appends blocks as bit-based data, rather than on byte
@@ -58,20 +50,19 @@ out: pointer to the dynamic output array to which the result is appended. Must
   be freed after use.
 outsize: pointer to the dynamic output array size.
 */
-void Deflate(const Options* options, int btype, int final,
-             const unsigned char* in, size_t insize,
-             unsigned char* bp, unsigned char** out, size_t* outsize);
-void DeflatePart(const Options* options, int btype, int final,
-                 const unsigned char* in, size_t instart, size_t inend,
-                 unsigned char* bp, unsigned char** out,
-                 size_t* outsize);
+void ZopfliDeflate(const ZopfliOptions* options, int btype, int final,
+                   const unsigned char* in, size_t insize,
+                   unsigned char* bp, unsigned char** out, size_t* outsize);
 
 /*
-Outputs the tree to a dynamic block (btype 10) according to the deflate
-specification.
+Like ZopfliDeflate, but allows to specify start and end byte with instart and
+inend. Only that part is compressed, but earlier bytes are still used for the
+back window.
 */
-void AddDynamicTree(const unsigned* ll_lengths, const unsigned* d_lengths,
-                    unsigned char* bp, unsigned char** out, size_t* outsize);
+void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
+                       const unsigned char* in, size_t instart, size_t inend,
+                       unsigned char* bp, unsigned char** out,
+                       size_t* outsize);
 
 /*
 Calculates block size in bits.
@@ -80,7 +71,7 @@ dists: ll77 distances
 lstart: start of block
 lend: end of block (not inclusive)
 */
-double CalculateBlockSize(
-    const unsigned short* litlens, const unsigned short* dists,
-    size_t lstart, size_t lend, int btype);
+double ZopfliCalculateBlockSize(const unsigned short* litlens,
+                                const unsigned short* dists,
+                                size_t lstart, size_t lend, int btype);
 #endif  /* ZOPFLI_DEFLATE_H_ */

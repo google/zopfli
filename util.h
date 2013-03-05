@@ -29,21 +29,21 @@ basic deflate specification values and generic program options.
 #include <stdlib.h>
 
 /* Minimum and maximum length that can be encoded in deflate. */
-#define MAX_MATCH 258
-#define MIN_MATCH 3
+#define ZOPFLI_MAX_MATCH 258
+#define ZOPFLI_MIN_MATCH 3
 
 /*
 The window size for deflate. Must be a power of two. This should be 32768, the
 maximum possible by the deflate spec. Anything less hurts compression more than
 speed.
 */
-#define WINDOW_SIZE 32768
+#define ZOPFLI_WINDOW_SIZE 32768
 
 /*
 The window mask used to wrap indices into the window. This is why the
 window size must be a power of two.
 */
-#define WINDOW_MASK (WINDOW_SIZE - 1)
+#define ZOPFLI_WINDOW_MASK (ZOPFLI_WINDOW_SIZE - 1)
 
 /*
 A block structure of huge, non-smart, blocks to divide the input into, to allow
@@ -53,12 +53,12 @@ be executed independently on each huge block.
 Dividing into huge blocks hurts compression, but not much relative to the size.
 Set this to, for example, 20MB (20000000). Set it to 0 to disable master blocks.
 */
-#define MASTER_BLOCK_SIZE 20000000
+#define ZOPFLI_MASTER_BLOCK_SIZE 20000000
 
 /*
 Used to initialize costs for example
 */
-#define LARGE_FLOAT 1e30
+#define ZOPFLI_LARGE_FLOAT 1e30
 
 /*
 For longest match cache. max 256. Uses huge amounts of memory but makes it
@@ -67,80 +67,80 @@ This is so because longest match finding has to find the exact distance
 that belongs to each length for the best lz77 strategy.
 Good values: e.g. 5, 8.
 */
-#define NUM_CACHED_LENGTHS 8
+#define ZOPFLI_CACHE_LENGTH 8
 
 /*
 limit the max hash chain hits for this hash value. This has an effect only
 on files where the hash value is the same very often. On these files, this
 gives worse compression (the value should ideally be 32768, which is the
-WINDOW_SIZE, while zlib uses 4096 even for best level), but makes it faster on
-some specific files.
+ZOPFLI_WINDOW_SIZE, while zlib uses 4096 even for best level), but makes it
+faster on some specific files.
 Good value: e.g. 8192.
 */
-#define MAX_CHAIN_HITS 8192
+#define ZOPFLI_MAX_CHAIN_HITS 8192
 
 /*
-Whether to use the longest match cache for FindLongestMatch. This cache
+Whether to use the longest match cache for ZopfliFindLongestMatch. This cache
 consumes a lot of memory but speeds it up. No effect on compression size.
 */
-#define USE_LONGEST_MATCH_CACHE
+#define ZOPFLI_LONGEST_MATCH_CACHE
 
 /*
 Enable to remember amount of successive identical bytes in the hash chain for
 finding longest match
-required for USE_HASH_SAME_HASH and SHORTCUT_LONG_REPETITIONS
+required for ZOPFLI_HASH_SAME_HASH and ZOPFLI_SHORTCUT_LONG_REPETITIONS
 This has no effect on the compression result, and enabling it increases speed.
 */
-#define USE_HASH_SAME
+#define ZOPFLI_HASH_SAME
 
 /*
-Switch to a faster hash based on the info from USE_HASH_SAME once the
+Switch to a faster hash based on the info from ZOPFLI_HASH_SAME once the
 best length so far is long enough. This is way faster for files with lots of
 identical bytes, on which the compressor is otherwise too slow. Regular files
 are unaffected or maybe a tiny bit slower.
 This has no effect on the compression result, only on speed.
 */
-#define USE_HASH_SAME_HASH
+#define ZOPFLI_HASH_SAME_HASH
 
 /*
 Enable this, to avoid slowness for files which are a repetition of the same
-character more than a multiple of MAX_MATCH times. This should not affect the
-compression result.
+character more than a multiple of ZOPFLI_MAX_MATCH times. This should not affect
+the compression result.
 */
-#define SHORTCUT_LONG_REPETITIONS
+#define ZOPFLI_SHORTCUT_LONG_REPETITIONS
 
 /*
 Whether to use lazy matching in the greedy LZ77 implementation. This gives a
-better result of LZ77Greedy, but the effect this has on the optimal LZ77
+better result of ZopfliLZ77Greedy, but the effect this has on the optimal LZ77
 varies from file to file.
 */
-#define LAZY_MATCHING
+#define ZOPFLI_LAZY_MATCHING
 
 /*
 Gets the symbol for the given length, cfr. the DEFLATE spec.
 Returns the symbol in the range [257-285] (inclusive)
 */
-int GetLengthSymbol(int l);
+int ZopfliGetLengthSymbol(int l);
 
 /* Gets the amount of extra bits for the given length, cfr. the DEFLATE spec. */
-int GetLengthExtraBits(int l);
+int ZopfliGetLengthExtraBits(int l);
 
 /* Gets value of the extra bits for the given length, cfr. the DEFLATE spec. */
-int GetLengthExtraBitsValue(int l);
+int ZopfliGetLengthExtraBitsValue(int l);
 
 /* Gets the symbol for the given dist, cfr. the DEFLATE spec. */
-int GetDistSymbol(int dist);
+int ZopfliGetDistSymbol(int dist);
 
 /* Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec. */
-int GetDistExtraBits(int dist);
+int ZopfliGetDistExtraBits(int dist);
 
 /* Gets value of the extra bits for the given dist, cfr. the DEFLATE spec. */
-int GetDistExtraBitsValue(int dist);
+int ZopfliGetDistExtraBitsValue(int dist);
 
 /*
 Options used throughout the program.
 */
-typedef struct Options {
+typedef struct ZopfliOptions {
   /* Whether to print output */
   int verbose;
 
@@ -171,10 +171,10 @@ typedef struct Options {
   extreme results that hurt compression on some files). Default value: 15.
   */
   int blocksplittingmax;
-} Options;
+} ZopfliOptions;
 
 /* Initializes options with default values. */
-void InitOptions(Options* options);
+void ZopfliInitOptions(ZopfliOptions* options);
 
 /*
 Appends value to dynamically allocated memory, doubling its allocation size
@@ -188,7 +188,7 @@ Precondition: allocated size of data is at least a power of two greater than or
 equal than *size.
 */
 #ifdef __cplusplus /* C++ cannot assign void* from malloc to *data */
-#define APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size) {\
+#define ZOPFLI_APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size) {\
   if (!((*size) & ((*size) - 1))) {\
     /*double alloc size if it's a power of two*/\
     void** data_void = reinterpret_cast<void**>(data);\
@@ -199,7 +199,7 @@ equal than *size.
   (*size)++;\
 }
 #else /* C gives problems with strict-aliasing rules for (void**) cast */
-#define APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size) {\
+#define ZOPFLI_APPEND_DATA(/* T */ value, /* T** */ data, /* size_t* */ size) {\
   if (!((*size) & ((*size) - 1))) {\
     /*double alloc size if it's a power of two*/\
     (*data) = (*size) == 0 ? malloc(sizeof(**data))\

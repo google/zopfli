@@ -177,7 +177,7 @@ static int LeafComparator(const void* a, const void* b) {
   return ((const Node*)a)->weight - ((const Node*)b)->weight;
 }
 
-int LengthLimitedCodeLengths(
+int ZopfliLengthLimitedCodeLengths(
     const size_t* frequencies, int n, int maxbits, unsigned* bitlengths) {
   NodePool pool;
   int i;

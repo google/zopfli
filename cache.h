@@ -18,7 +18,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
 /*
-The cache that speeds up FindLongestMatch of lz77.c.
+The cache that speeds up ZopfliFindLongestMatch of lz77.c.
 */
 
 #ifndef ZOPFLI_CACHE_H_
@@ -26,38 +26,41 @@ The cache that speeds up FindLongestMatch of lz77.c.
 
 #include "util.h"
 
-#ifdef USE_LONGEST_MATCH_CACHE
+#ifdef ZOPFLI_LONGEST_MATCH_CACHE
 
 /*
-Cache used by FindLongestMatch to remember previously found length/dist values.
+Cache used by ZopfliFindLongestMatch to remember previously found length/dist
+values.
 This is needed because the squeeze runs will ask these values multiple times for
 the same position.
 Uses large amounts of memory, since it has to remember the distance belonging
 to every possible shorter-than-the-best length (the so called "sublen" array).
 */
-typedef struct LongestMatchCache {
+typedef struct ZopfliLongestMatchCache {
   unsigned short* length;
   unsigned short* dist;
-  unsigned char* sublen; /* For each length, the distance */
-} LongestMatchCache;
+  unsigned char* sublen;
+} ZopfliLongestMatchCache;
 
-/* Initializes the LongestMatchCache. */
-void InitLongestMatchCache(size_t blocksize, LongestMatchCache* lmc);
+/* Initializes the ZopfliLongestMatchCache. */
+void ZopfliInitCache(size_t blocksize, ZopfliLongestMatchCache* lmc);
 
-/* Frees up the memory of the LongestMatchCache. */
-void CleanLongestMatchCache(LongestMatchCache* lmc);
+/* Frees up the memory of the ZopfliLongestMatchCache. */
+void ZopfliCleanCache(ZopfliLongestMatchCache* lmc);
 
 /* Stores sublen array in the cache. */
-void SublenToCache(const unsigned short* sublen, size_t pos, size_t length,
-                   LongestMatchCache* lmc);
+void ZopfliSublenToCache(const unsigned short* sublen,
+                         size_t pos, size_t length,
+                         ZopfliLongestMatchCache* lmc);
 
 /* Extracts sublen array from the cache. */
-void CacheToSublen(const LongestMatchCache* lmc, size_t pos, size_t length,
-                   unsigned short* sublen);
+void ZopfliCacheToSublen(const ZopfliLongestMatchCache* lmc,
+                         size_t pos, size_t length,
+                         unsigned short* sublen);
 /* Returns the length up to which could be stored in the cache. */
-unsigned MaxCachedSublen(const LongestMatchCache* lmc,
-                         size_t pos, size_t length);
+unsigned ZopfliMaxCachedSublen(const ZopfliLongestMatchCache* lmc,
+                               size_t pos, size_t length);
 
-#endif  /* USE_LONGEST_MATCH_CACHE */
+#endif  /* ZOPFLI_LONGEST_MATCH_CACHE */
 
 #endif  /* ZOPFLI_CACHE_H_ */
