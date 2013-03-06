@@ -200,11 +200,3 @@ int ZopfliGetLengthSymbol(int l) {
   };
   return table[l];
 }
-
-void ZopfliInitOptions(ZopfliOptions* options) {
-  options->verbose = 0;
-  options->numiterations = 15;
-  options->blocksplitting = 1;
-  options->blocksplittinglast = 0;
-  options->blocksplittingmax = 15;
-}

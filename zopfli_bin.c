@@ -76,17 +76,11 @@ static void SaveFile(const char* filename,
   fclose(file);
 }
 
-typedef enum {
-  OUTPUT_GZIP,
-  OUTPUT_ZLIB,
-  OUTPUT_DEFLATE
-} OutputType;
-
 /*
 outfilename: filename to write output to, or 0 to write to stdout instead
 */
 static void CompressFile(const ZopfliOptions* options,
-                         OutputType output_type,
+                         ZopfliFormat output_type,
                          const char* infilename,
                          const char* outfilename) {
   unsigned char* in;
@@ -98,17 +92,9 @@ static void CompressFile(const ZopfliOptions* options,
     fprintf(stderr, "Invalid filename: %s\n", infilename);
     return;
   }
-  if (output_type == OUTPUT_GZIP) {
-    ZopfliGzipCompress(options, in, insize, &out, &outsize);
-  } else if (output_type == OUTPUT_ZLIB) {
-    ZopfliZlibCompress(options, in, insize, &out, &outsize);
-  } else if (output_type == OUTPUT_DEFLATE) {
-    unsigned char bp = 0;
-    ZopfliDeflate(options, 2 /* Dynamic block */, 1,
-                  in, insize, &bp, &out, &outsize);
-  } else {
-    assert(0);
-  }
+
+  ZopfliCompress(options, output_type, in, insize, &out, &outsize);
+
   if (outfilename) {
     SaveFile(outfilename, out, outsize);
   } else {
@@ -141,19 +127,21 @@ static char StringsEqual(const char* str1, const char* str2) {
 
 int main(int argc, char* argv[]) {
   ZopfliOptions options;
+  ZopfliFormat output_type = ZOPFLI_FORMAT_GZIP;
   const char* filename = 0;
   int output_to_stdout = 0;
   int i;
-  OutputType output_type = OUTPUT_GZIP;
 
   ZopfliInitOptions(&options);
 
   for (i = 1; i < argc; i++) {
     if (StringsEqual(argv[i], "-v")) options.verbose = 1;
     else if (StringsEqual(argv[i], "-c")) output_to_stdout = 1;
-    else if (StringsEqual(argv[i], "--deflate")) output_type = OUTPUT_DEFLATE;
-    else if (StringsEqual(argv[i], "--zlib")) output_type = OUTPUT_ZLIB;
-    else if (StringsEqual(argv[i], "--gzip")) output_type = OUTPUT_GZIP;
+    else if (StringsEqual(argv[i], "--deflate")) {
+      output_type = ZOPFLI_FORMAT_DEFLATE;
+    }
+    else if (StringsEqual(argv[i], "--zlib")) output_type = ZOPFLI_FORMAT_ZLIB;
+    else if (StringsEqual(argv[i], "--gzip")) output_type = ZOPFLI_FORMAT_GZIP;
     else if (StringsEqual(argv[i], "--i5")) options.numiterations = 5;
     else if (StringsEqual(argv[i], "--i10")) options.numiterations = 10;
     else if (StringsEqual(argv[i], "--i15")) options.numiterations = 15;
@@ -191,12 +179,12 @@ int main(int argc, char* argv[]) {
       filename = argv[i];
       if (output_to_stdout) {
         outfilename = 0;
-      } else if (output_type == OUTPUT_GZIP) {
+      } else if (output_type == ZOPFLI_FORMAT_GZIP) {
         outfilename = AddStrings(filename, ".gz");
-      } else if (output_type == OUTPUT_ZLIB) {
+      } else if (output_type == ZOPFLI_FORMAT_ZLIB) {
         outfilename = AddStrings(filename, ".zlib");
       } else {
-        assert(output_type == OUTPUT_DEFLATE);
+        assert(output_type == ZOPFLI_FORMAT_DEFLATE);
         outfilename = AddStrings(filename, ".deflate");
       }
       if (options.verbose && outfilename) {

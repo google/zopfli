@@ -30,7 +30,7 @@ ones that enhance it.
 
 #include <stdlib.h>
 
-#include "util.h"
+#include "zopfli.h"
 
 
 /*

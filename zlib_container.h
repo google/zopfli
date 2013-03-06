@@ -24,7 +24,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 Functions to compress according to the Zlib specification.
 */
 
-#include "util.h"
+#include "zopfli.h"
 
 /*
 Compresses according to the zlib specification and append the compressed

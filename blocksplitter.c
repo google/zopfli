@@ -27,6 +27,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include "lz77.h"
 #include "squeeze.h"
 #include "tree.h"
+#include "util.h"
 
 /*
 The "f" for the FindMinimum function below.

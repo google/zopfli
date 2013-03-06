@@ -18,6 +18,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
 #include "zlib_container.h"
+#include "util.h"
 
 #include <stdio.h>
 

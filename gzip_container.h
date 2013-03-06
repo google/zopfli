@@ -24,7 +24,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 Functions to compress according to the Gzip specification.
 */
 
-#include "util.h"
+#include "zopfli.h"
 
 /*
 Compresses according to the gzip specification and append the compressed

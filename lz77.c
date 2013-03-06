@@ -18,6 +18,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
 #include "lz77.h"
+#include "util.h"
 
 #include <assert.h>
 #include <stdio.h>

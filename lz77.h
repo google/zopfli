@@ -29,7 +29,7 @@ compression.
 
 #include "cache.h"
 #include "hash.h"
-#include "util.h"
+#include "zopfli.h"
 
 /*
 Stores lit/length and dist pairs for LZ77.
