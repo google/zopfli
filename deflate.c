@@ -17,11 +17,6 @@ Author: lode.vandevenne@gmail.com (Lode Vandevenne)
 Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
-/*
-Modified by madler@alumni.caltech.edu (Mark Adler)
-Exposed DeflatePart() as an external function.
-*/
-
 #include "deflate.h"
 
 #include <assert.h>
