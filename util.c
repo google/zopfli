@@ -19,6 +19,8 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #include "util.h"
 
+#include "zopfli.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -199,4 +201,12 @@ int ZopfliGetLengthSymbol(int l) {
     284, 284, 284, 284, 284, 284, 284, 285
   };
   return table[l];
+}
+
+void ZopfliInitOptions(ZopfliOptions* options) {
+  options->verbose = 0;
+  options->numiterations = 15;
+  options->blocksplitting = 1;
+  options->blocksplittinglast = 0;
+  options->blocksplittingmax = 15;
 }
