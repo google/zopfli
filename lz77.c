@@ -64,16 +64,30 @@ void ZopfliStoreLitLenDist(unsigned short length, unsigned short dist,
 }
 
 /*
-Gets the value of the length given the distance. Typically, the value of the
-length is the length, but if the distance is very long, decrease the value of
-the length a bit to make up for the fact that long distances use large amounts
-of extra bits.
+Gets a score of the length given the distance. Typically, the score of the
+length is the length itself, but if the distance is very long, decrease the
+score of the length a bit to make up for the fact that long distances use large
+amounts of extra bits.
+
+This is not an accurate score, it is a heuristic only for the greedy LZ77
+implementation. More accurate cost models are employed later. Making this
+heuristic more accurate may hurt rather than improve compression.
+
+The two direct uses of this heuristic are:
+-avoid using a length of 3 in combination with a long distance. This only has
+ an effect if length == 3.
+-make a slightly better choice between the two options of the lazy matching.
+
+Indirectly, this affects:
+-the block split points if the default of block splitting first is used, in a
+ rather unpredictable way
+-the first zopfli run, so it affects the chance of the first run being closer
+ to the optimal output
 */
-static int GetLengthValue(int length, int distance) {
+static int GetLengthScore(int length, int distance) {
   /*
-  At distance > 1024, using length 3 is no longer good, due to the large amount
-  of extra bits for the distance code. distance > 1024 uses 9+ extra bits, and
-  this seems to be the sweet spot.
+  At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
+  on tested files.
   */
   return distance > 1024 ? length - 1 : length;
 }
@@ -355,7 +369,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
   size_t i = 0, j;
   unsigned short leng;
   unsigned short dist;
-  int lengvalue;
+  int lengthscore;
   size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
       ? instart - ZOPFLI_WINDOW_SIZE : 0;
   unsigned short dummysublen[259];
@@ -367,7 +381,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
   /* Lazy matching. */
   unsigned prev_length = 0;
   unsigned prev_match = 0;
-  int prevlengvalue;
+  int prevlengthscore;
   int match_available = 0;
 #endif
 
@@ -384,16 +398,16 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
 
     ZopfliFindLongestMatch(s, h, in, i, inend, ZOPFLI_MAX_MATCH, dummysublen,
                            &dist, &leng);
-    lengvalue = GetLengthValue(leng, dist);
+    lengthscore = GetLengthScore(leng, dist);
 
 #ifdef ZOPFLI_LAZY_MATCHING
     /* Lazy matching. */
-    prevlengvalue = GetLengthValue(prev_length, prev_match);
+    prevlengthscore = GetLengthScore(prev_length, prev_match);
     if (match_available) {
       match_available = 0;
-      if (lengvalue > prevlengvalue + 1) {
+      if (lengthscore > prevlengthscore + 1) {
         ZopfliStoreLitLenDist(in[i - 1], 0, store);
-        if (lengvalue >= ZOPFLI_MIN_MATCH && lengvalue < ZOPFLI_MAX_MATCH) {
+        if (lengthscore >= ZOPFLI_MIN_MATCH && leng < ZOPFLI_MAX_MATCH) {
           match_available = 1;
           prev_length = leng;
           prev_match = dist;
@@ -403,7 +417,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
         /* Add previous to output. */
         leng = prev_length;
         dist = prev_match;
-        lengvalue = prevlengvalue;
+        lengthscore = prevlengthscore;
         /* Add to output. */
         ZopfliVerifyLenDist(in, inend, i - 1, dist, leng);
         ZopfliStoreLitLenDist(leng, dist, store);
@@ -415,7 +429,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
         continue;
       }
     }
-    else if (lengvalue >= ZOPFLI_MIN_MATCH && leng < ZOPFLI_MAX_MATCH) {
+    else if (lengthscore >= ZOPFLI_MIN_MATCH && leng < ZOPFLI_MAX_MATCH) {
       match_available = 1;
       prev_length = leng;
       prev_match = dist;
@@ -425,7 +439,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
 #endif
 
     /* Add to output. */
-    if (lengvalue >= ZOPFLI_MIN_MATCH) {
+    if (lengthscore >= ZOPFLI_MIN_MATCH) {
       ZopfliVerifyLenDist(in, inend, i, dist, leng);
       ZopfliStoreLitLenDist(leng, dist, store);
     } else {

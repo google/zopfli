@@ -689,4 +689,10 @@ void ZopfliDeflate(const ZopfliOptions* options, int btype, int final,
     i += size;
   }
 #endif
+  if (options->verbose) {
+    fprintf(stderr,
+            "Original Size: %d, Deflate: %d, Compression: %f%% Removed\n",
+            (int)insize, (int)*outsize,
+            100.0 * (double)(insize - *outsize) / (double)insize);
+  }
 }

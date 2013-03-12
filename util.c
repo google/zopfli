@@ -205,6 +205,7 @@ int ZopfliGetLengthSymbol(int l) {
 
 void ZopfliInitOptions(ZopfliOptions* options) {
   options->verbose = 0;
+  options->verbose_more = 0;
   options->numiterations = 15;
   options->blocksplitting = 1;
   options->blocksplittinglast = 0;
