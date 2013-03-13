@@ -6,9 +6,10 @@ very well compressed gzip files.
 
 The basic functions to compress data are ZopfliDeflate in deflate.h,
 ZopfliZlibCompress in zlib_container.h and ZopfliGzipCompress in
-gzip_container.h. Use the ZopfliOptions object to set parameters that affect the
-speed and compression. Use the ZopfliInitOptions function to place the default
-values in the ZopfliOptions first.
+gzip_container.h, or ZopfliCompress in zopfli.h.
+Use the ZopfliOptions object to set parameters that affect the speed and
+compression. Use the ZopfliInitOptions function to place the default values in
+the ZopfliOptions first.
 
 Deflate creates a valid deflate stream in memory, see:
 http://www.ietf.org/rfc/rfc1951.txt

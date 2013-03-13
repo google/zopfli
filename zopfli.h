@@ -17,9 +17,8 @@ Author: lode.vandevenne@gmail.com (Lode Vandevenne)
 Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 */
 
-
-#ifndef UTIL_COMPRESSION_ZOPFLI_INTERNAL_ZOPFLI_H_
-#define UTIL_COMPRESSION_ZOPFLI_INTERNAL_ZOPFLI_H_
+#ifndef ZOPFLI_ZOPFLI_H_
+#define ZOPFLI_ZOPFLI_H_
 
 #include <stdlib.h> /* for size_t */
 
@@ -86,4 +85,4 @@ void ZopfliCompress(const ZopfliOptions* options, ZopfliFormat output_type,
                     const unsigned char* in, size_t insize,
                     unsigned char** out, size_t* outsize);
 
-#endif  /* UTIL_COMPRESSION_ZOPFLI_INTERNAL_ZOPFLI_H_ */
+#endif  /* ZOPFLI_ZOPFLI_H_ */
