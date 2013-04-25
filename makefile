@@ -1,5 +1,5 @@
 make:
-	gcc *.c -O2 -W -Wall -Wextra -ansi -pedantic -lm -o zopfli
+	gcc src/zopfli/*.c -O2 -W -Wall -Wextra -ansi -pedantic -lm -o zopfli
 
 debug:
-	gcc *.c -g3 -lm -o zopfli
+	gcc src/zopfli/*.c -g3 -lm -o zopfli
