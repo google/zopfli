@@ -20,6 +20,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #ifndef ZOPFLI_ZOPFLI_H_
 #define ZOPFLI_ZOPFLI_H_
 
+#include <stddef.h>
 #include <stdlib.h> /* for size_t */
 
 /*

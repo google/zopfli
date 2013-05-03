@@ -155,8 +155,8 @@ static void AddDynamicTree(const unsigned* ll_lengths,
         }
         if (repeat >= 3) {
           ZOPFLI_APPEND_DATA(16, &rle, &rle_size);
-          ZOPFLI_APPEND_DATA(3 - 3, &rle_bits, &rle_bits_size);
-          repeat -= 3;
+          ZOPFLI_APPEND_DATA(repeat - 3, &rle_bits, &rle_bits_size);
+          repeat = 0;
         }
         while (repeat != 0) {
           ZOPFLI_APPEND_DATA(lld_lengths[i], &rle, &rle_size);
@@ -356,7 +356,8 @@ static void AddLZ77Block(const ZopfliOptions* options, int btype, int final,
                          const unsigned short* dists,
                          size_t lstart, size_t lend,
                          size_t expected_data_size,
-                         unsigned char* bp, unsigned char** out, size_t* outsize) {
+                         unsigned char* bp,
+                         unsigned char** out, size_t* outsize) {
   size_t ll_counts[288];
   size_t d_counts[32];
   unsigned ll_lengths[288];
