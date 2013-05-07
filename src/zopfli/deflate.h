@@ -27,6 +27,10 @@ Functions to compress according to the DEFLATE specification, using the
 
 #include "zopfli.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
 Compresses according to the deflate specification and append the compressed
 result to the output.
@@ -74,4 +78,9 @@ lend: end of block (not inclusive)
 double ZopfliCalculateBlockSize(const unsigned short* litlens,
                                 const unsigned short* dists,
                                 size_t lstart, size_t lend, int btype);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
+
 #endif  /* ZOPFLI_DEFLATE_H_ */

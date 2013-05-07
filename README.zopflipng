@@ -1,0 +1,35 @@
+ZopfliPNG is a command line program to optimize the Portable Network Graphics
+(PNG) images. This version has the following features:
+- uses Zopfli compression for the Deflate compression,
+- compares several strategies for choosing scanline filter codes,
+- chooses a suitable color type to losslessly encode the image,
+- removes all chunks that are unimportant for the typical web use (metadata,
+  text, etc...),
+- optionally alters the hidden colors of fully transparent pixels for more
+  compression, and,
+- optionally converts 16-bit color channels to 8-bit.
+
+This is an alpha-release for testing while improvements, particularly to add
+palette selection, are still being made. Feedback and bug reports are welcome.
+
+To build ZopfliPNG, use "make zopflipng", or compile all the sources except
+zopfli_bin.c.
+
+The main compression algorithm in ZopfliPNG is ported from WebP lossless, but
+naturally cannot give as much compression gain for PNGs as it does for a more
+modern compression codec like WebP
+https://developers.google.com/speed/webp/docs/webp_lossless_bitstream_specification.
+
+Compared to libpng -- an often used PNG encoder implementation -- ZopfliPNG uses
+2-3 orders of magnitude more CPU time for compression. Initial testing using a
+corpus of 1000 PNGs with translucency, randomly selected from the internet,
+gives a compression improvement of 12% compared to convert -q 95, but only 0.5%
+compared to pngout (from better of /f0 and /f5 runs).
+
+By releasing this software we hope to make images on the web load faster without
+a new image format, but the opportunities for optimization within PNG are
+limited. When targeting Android, Chrome, Opera, and Yandex browsers, or by using
+suitable plugins for other browsers, it is good to note that WebP lossless
+images are still 26 % smaller than images recompressed with ZopfliPNG.
+
+2013-05-07, Lode Vandevenne and Jyrki Alakuijala

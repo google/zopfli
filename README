@@ -25,5 +25,8 @@ zopfli_bin.c is separate from the library and contains an example program to
 create very well compressed gzip files. Currently the makefile builds this
 program with the library statically linked in.
 
+To build the binary, use "make". To build the library as a shared Linux library,
+use "make libzopfli". The source code of Zopfli is under src/zopfli.
+
 Zopfli Compression Algorithm was created by Lode Vandevenne and Jyrki
 Alakuijala, based on an algorithm by Jyrki Alakuijala.
