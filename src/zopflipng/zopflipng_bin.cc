@@ -361,11 +361,14 @@ int main(int argc, char *argv[]) {
       } else {
         bool confirmed = true;
         if (!yes && !dryrun && already_exists) {
-          size_t nbytes = 2;
-          char* text = (char*) malloc(nbytes);
           printf("File %s exists, overwrite? (y/N) ", out_filename.c_str());
-          int bytes_read = getline(&text, &nbytes, stdin);
-          confirmed = bytes_read > 0 && (text[0] == 'y' || text[0] == 'Y');
+          char answer = 0;
+          // Read the first character, the others and enter with getchar.
+          while (int input = getchar()) {
+            if (input == '\n' || input == EOF) break;
+            else if (!answer) answer = input;
+          }
+          confirmed = answer == 'y' || answer == 'Y';
         }
         if (confirmed) {
           if (!dryrun) {
