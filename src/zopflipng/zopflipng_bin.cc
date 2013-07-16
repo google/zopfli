@@ -93,6 +93,8 @@ void ShowHelp() {
          "--iterations=[number]: number of iterations, more iterations makes it"
          " slower but provides slightly better compression. Default: 15 for"
          " small files, 5 for large files.\n"
+         "--timelimit=[cpuseconds]: maximum amount of CPU time to spend "
+         " iterating. Default: 0 (unlimited)\n"
          "--splitting=[0-3]: block split strategy:"
          " 0=none, 1=first, 2=last, 3=try both and take the best\n"
          "--filters=[types]: filter strategies to try:\n"
@@ -190,6 +192,9 @@ int main(int argc, char *argv[]) {
         if (num < 1) num = 1;
         png_options.num_iterations = num;
         png_options.num_iterations_large = num;
+      } else if (name == "--timelimit") {
+          if (num < 0) num = 0;
+          png_options.iterations_time_limit = num;
       } else if (name == "--splitting") {
         if (num < 0 || num > 3) num = 1;
         png_options.block_split_strategy = num;

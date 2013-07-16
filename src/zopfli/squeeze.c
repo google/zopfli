@@ -22,6 +22,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "blocksplitter.h"
 #include "deflate.h"
@@ -476,6 +477,14 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   ZopfliLZ77Greedy(s, in, instart, inend, &currentstore);
   GetStatistics(&currentstore, &stats);
 
+
+#ifdef CLOCKS_PER_SEC
+  clock_t start;
+  if (s->options->iterationlimitseconds > 0) {
+    start = clock();
+  }
+#endif
+
   /* Repeat statistics with each time the cost model from the previous stat
   run. */
   for (i = 0; i < s->options->numiterations; i++) {
@@ -512,6 +521,19 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
       lastrandomstep = i;
     }
     lastcost = cost;
+
+#ifdef CLOCKS_PER_SEC
+    if (s->options->iterationlimitseconds > 0) {
+      double diff_sec = (double)(clock()-start)/CLOCKS_PER_SEC;
+      if (diff_sec >= s->options->iterationlimitseconds) {
+        if (s->options->verbose_more) {
+          fprintf(stderr, "Stopped after %d iterations due to time limit\n", i);
+        }
+        break;
+      }
+    }
+#endif
+
   }
 
   free(length_array);
