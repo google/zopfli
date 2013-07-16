@@ -594,7 +594,7 @@ static void DeflateDynamicBlock(const ZopfliOptions* options, ZopfliBlockState *
 
   ZopfliInitLZ77Store(&store);
 
-  ZopfliLZ77Optimal(s, in, instart, inend, &store);
+  ZopfliLZ77Optimal(s, in, instart, inend, &store, s->blockiterationlimit);
 
   /* For small block, encoding with fixed tree can be smaller. For large block,
   don't bother doing this expensive test, dynamic tree will be better.*/
@@ -675,7 +675,9 @@ static void DeflateBlock(const ZopfliOptions* options,
                          int btype, int final,
                          const unsigned char* in, size_t instart, size_t inend,
                          unsigned char* bp,
-                         unsigned char** out, size_t* outsize) {
+                         unsigned char** out, size_t* outsize,
+                         double blockiterationlimit) {
+
   if (btype == 0) {
     DeflateNonCompressedBlock(
         options, final, in, instart, inend, bp, out, outsize);
@@ -684,6 +686,7 @@ static void DeflateBlock(const ZopfliOptions* options,
     s.options = options;
     s.blockstart = instart;
     s.blockend = inend;
+    s.blockiterationlimit = blockiterationlimit;
 
 #ifdef ZOPFLI_LONGEST_MATCH_CACHE
     s.lmc = (ZopfliLongestMatchCache*)malloc(sizeof(ZopfliLongestMatchCache));
@@ -731,8 +734,10 @@ static void DeflateSplittingFirst(const ZopfliOptions* options,
   for (i = 0; i <= npoints; i++) {
     size_t start = i == 0 ? instart : splitpoints[i - 1];
     size_t end = i == npoints ? inend : splitpoints[i];
+    double blockiterationlimit = options->iterationlimitseconds * (end-start) / (inend-instart);
+
     DeflateBlock(options, btype, i == npoints && final, in, start, end,
-                 bp, out, outsize);
+                 bp, out, outsize, blockiterationlimit);
   }
 
   free(splitpoints);
@@ -771,7 +776,7 @@ static void DeflateSplittingLast(const ZopfliOptions* options,
   s.blockend = inend;
 
   if (btype == 2) {
-    ZopfliLZ77Optimal(&s, in, instart, inend, &store);
+    ZopfliLZ77Optimal(&s, in, instart, inend, &store, options->iterationlimitseconds);
   } else {
     assert (btype == 1);
     ZopfliLZ77OptimalFixed(&s, in, instart, inend, &store);
@@ -819,7 +824,7 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
                             bp, out, outsize);
     }
   } else {
-    DeflateBlock(options, btype, final, in, instart, inend, bp, out, outsize);
+    DeflateBlock(options, btype, final, in, instart, inend, bp, out, outsize, options->iterationlimitseconds);
   }
 }
 

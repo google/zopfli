@@ -447,7 +447,8 @@ static double LZ77OptimalRun(ZopfliBlockState* s,
 
 void ZopfliLZ77Optimal(ZopfliBlockState *s,
                        const unsigned char* in, size_t instart, size_t inend,
-                       ZopfliLZ77Store* store) {
+                       ZopfliLZ77Store* store,
+                       double iterationlimitseconds) {
   /* Dist to get to here with smallest cost. */
   size_t blocksize = inend - instart;
   unsigned short* length_array =
@@ -480,7 +481,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
 
 #ifdef CLOCKS_PER_SEC
   clock_t start;
-  if (s->options->iterationlimitseconds > 0) {
+  if (iterationlimitseconds > 0) {
     start = clock();
   }
 #endif
@@ -523,11 +524,11 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
     lastcost = cost;
 
 #ifdef CLOCKS_PER_SEC
-    if (s->options->iterationlimitseconds > 0) {
+    if (iterationlimitseconds > 0) {
       double diff_sec = (double)(clock()-start)/CLOCKS_PER_SEC;
-      if (diff_sec >= s->options->iterationlimitseconds) {
+      if (diff_sec >= iterationlimitseconds) {
         if (s->options->verbose_more) {
-          fprintf(stderr, "Stopped after %d iterations due to time limit\n", i);
+          fprintf(stderr, "Stopped after %d iterations due to time limit %f\n", i, diff_sec);
         }
         break;
       }
