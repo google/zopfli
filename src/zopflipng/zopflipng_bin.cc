@@ -182,6 +182,8 @@ int main(int argc, char *argv[]) {
       int num = atoi(value.c_str());
       if (name == "--always_zopflify") {
         always_zopflify = true;
+      } else if (name == "--verbose") {
+        png_options.verbose = true;
       } else if (name == "--lossy_transparent") {
         png_options.lossy_transparent = true;
       } else if (name == "--lossy_8bit") {
