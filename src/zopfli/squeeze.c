@@ -464,6 +464,9 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   /* Try randomizing the costs a bit once the size stabilizes. */
   RanState ran_state;
   int lastrandomstep = -1;
+#ifdef CLOCKS_PER_SEC
+  clock_t start;
+#endif
 
   if (!length_array) exit(-1); /* Allocation failed. */
 
@@ -480,7 +483,6 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
 
 
 #ifdef CLOCKS_PER_SEC
-  clock_t start;
   if (iterationlimitseconds > 0) {
     start = clock();
   }
