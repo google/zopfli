@@ -536,7 +536,7 @@ static void AddLZ77Block(const ZopfliOptions* options, int btype, int final,
   unsigned d_lengths[32];
   unsigned ll_symbols[288];
   unsigned d_symbols[32];
-  size_t detect_block_size = *outsize;
+  size_t detect_block_size;
   size_t compressed_size;
   size_t uncompressed_size = 0;
   size_t i;
