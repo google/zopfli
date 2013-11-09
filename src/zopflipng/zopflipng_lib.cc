@@ -28,7 +28,7 @@
 
 #include "lodepng/lodepng.h"
 #include "lodepng/lodepng_util.h"
-#include "../zopfli/deflate.h"
+#include "deflate.h"
 
 ZopfliPNGOptions::ZopfliPNGOptions()
   : lossy_transparent(false)
