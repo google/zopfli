@@ -1,0 +1,8 @@
+language: cpp
+script: make -j2 && make -j2 test && sudo make -j2 install
+compiler:
+  - clang
+  - gcc
+notifications:
+  irc:
+    - "irc.freenode.net#zopfli"
