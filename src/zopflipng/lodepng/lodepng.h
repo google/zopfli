@@ -1,5 +1,5 @@
 /*
-LodePNG version 20130415
+LodePNG version 20131222
 
 Copyright (c) 2005-2013 Lode Vandevenne
 
@@ -262,7 +262,7 @@ struct LodePNGDecompressSettings
                              const unsigned char*, size_t,
                              const LodePNGDecompressSettings*);
 
-  void* custom_context; /*optional custom settings for custom functions*/
+  const void* custom_context; /*optional custom settings for custom functions*/
 };
 
 extern const LodePNGDecompressSettings lodepng_default_decompress_settings;
@@ -280,7 +280,7 @@ struct LodePNGCompressSettings /*deflate = compress*/
   /*LZ77 related settings*/
   unsigned btype; /*the block type for LZ (0, 1, 2 or 3, see zlib standard). Should be 2 for proper compression.*/
   unsigned use_lz77; /*whether or not to use LZ77. Should be 1 for proper compression.*/
-  unsigned windowsize; /*the maximum is 32768, higher gives more compression but is slower. Typical value: 2048.*/
+  unsigned windowsize; /*must be a power of two <= 32768. higher compresses more but is slower. Typical value: 2048.*/
   unsigned minmatch; /*mininum lz77 length. 3 is normally best, 6 can be better for some PNGs. Default: 0*/
   unsigned nicematch; /*stop searching if >= this length found. Set to 258 for best compression. Default: 128*/
   unsigned lazymatching; /*use lazy matching: better compression but a bit slower. Default: true*/
@@ -296,7 +296,7 @@ struct LodePNGCompressSettings /*deflate = compress*/
                              const unsigned char*, size_t,
                              const LodePNGCompressSettings*);
 
-  void* custom_context; /*optional custom settings for custom functions*/
+  const void* custom_context; /*optional custom settings for custom functions*/
 };
 
 extern const LodePNGCompressSettings lodepng_default_compress_settings;
@@ -501,9 +501,8 @@ The fix_png value works as described in struct LodePNGDecoderSettings.
 Note: for 16-bit per channel colors, uses big endian format like PNG does.
 */
 unsigned lodepng_convert(unsigned char* out, const unsigned char* in,
-                         LodePNGColorMode* mode_out, LodePNGColorMode* mode_in,
+                         LodePNGColorMode* mode_out, const LodePNGColorMode* mode_in,
                          unsigned w, unsigned h, unsigned fix_png);
-
 
 #ifdef LODEPNG_COMPILE_DECODER
 /*
@@ -524,7 +523,7 @@ typedef struct LodePNGDecoderSettings
   interpret it as opaque black.
   By default this value is 0, which makes it stop with an error on such images.
   */
-  unsigned fix_png; /*if 1, try to parse some broken PNG images, e.g. with out of bound palette.*/
+  unsigned fix_png;
   unsigned color_convert; /*whether to convert the PNG to the color type you want. Default: yes*/
 
 #ifdef LODEPNG_COMPILE_ANCILLARY_CHUNKS
@@ -580,6 +579,17 @@ typedef enum LodePNGAutoConvert
 } LodePNGAutoConvert;
 
 
+/*
+Automatically chooses color type that gives smallest amount of bits in the
+output image, e.g. grey if there are only greyscale pixels, palette if there
+are less than 256 colors, ...
+The auto_convert parameter allows limiting it to not use palette, ...
+*/
+unsigned lodepng_auto_choose_color(LodePNGColorMode* mode_out,
+                                   const unsigned char* image, unsigned w, unsigned h,
+                                   const LodePNGColorMode* mode_in,
+                                   LodePNGAutoConvert auto_convert);
+
 /*Settings for the encoder.*/
 typedef struct LodePNGEncoderSettings
 {
@@ -599,7 +609,7 @@ typedef struct LodePNGEncoderSettings
   the same length as the amount of scanlines in the image, and each value must <= 5. You
   have to cleanup this buffer, LodePNG will never free it. Don't forget that filter_palette_zero
   must be set to 0 to ensure this is also used on palette or low bitdepth images.*/
-  unsigned char* predefined_filters;
+  const unsigned char* predefined_filters;
 
   /*force creating a PLTE chunk if colortype is 2 or 6 (= a suggested palette).
   If colortype is 3, PLTE is _always_ created.*/
@@ -1564,6 +1574,7 @@ yyyymmdd.
 Some changes aren't backwards compatible. Those are indicated with a (!)
 symbol.
 
+*) 22 dec 2013: Power of two windowsize required for optimization.
 *) 15 apr 2013: Fixed bug with LAC_ALPHA and color key.
 *) 25 mar 2013: Added an optional feature to ignore some PNG errors (fix_png).
 *) 11 mar 2013 (!): Bugfix with custom free. Changed from "my" to "lodepng_"

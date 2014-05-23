@@ -134,9 +134,8 @@ unsigned TryOptimize(
   lodepng::State state;
   state.encoder.zlibsettings.windowsize = windowsize;
   if (use_zopfli && png_options->use_zopfli) {
-    ZopfliPNGOptions custom_context = *png_options;
     state.encoder.zlibsettings.custom_deflate = CustomPNGDeflate;
-    state.encoder.zlibsettings.custom_context = &custom_context;
+    state.encoder.zlibsettings.custom_context = png_options;
   }
 
   if (inputstate.info_png.color.colortype == LCT_PALETTE) {
@@ -214,7 +213,7 @@ unsigned TryOptimize(
   }
 
   if (error) {
-    printf("Encoding error %i: %s\n", error, lodepng_error_text(error));
+    printf("Encoding error %u: %s\n", error, lodepng_error_text(error));
     return error;
   }
 
