@@ -132,16 +132,14 @@ static double SplitCost(size_t i, void* context) {
 static void AddSorted(size_t value, size_t** out, size_t* outsize) {
   size_t i;
   ZOPFLI_APPEND_DATA(value, out, outsize);
-  if (*outsize > 0) {
-    for (i = 0; i < *outsize - 1; i++) {
-      if ((*out)[i] > value) {
-        size_t j;
-        for (j = *outsize - 1; j > i; j--) {
-          (*out)[j] = (*out)[j - 1];
-        }
-        (*out)[i] = value;
-        break;
+  for (i = 0; i + 1 < *outsize; i++) {
+    if ((*out)[i] > value) {
+      size_t j;
+      for (j = *outsize - 1; j > i; j--) {
+        (*out)[j] = (*out)[j - 1];
       }
+      (*out)[i] = value;
+      break;
     }
   }
 }

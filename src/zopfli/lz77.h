@@ -33,10 +33,13 @@ compression.
 
 /*
 Stores lit/length and dist pairs for LZ77.
-litlens: Contains the literal symbols or length values.
-dists: Indicates the distance, or 0 to indicate that there is no distance and
-litlens contains a literal instead of a length.
-litlens and dists both have the same size.
+Parameter litlens: Contains the literal symbols or length values.
+Parameter dists: Contains the distances. A value is 0 to indicate that there is
+no dist and the corresponding litlens value is a literal instead of a length.
+Parameter size: The size of both the litlens and dists arrays.
+The memory can best be managed by using ZopfliInitLZ77Store to initialize it,
+ZopfliCleanLZ77Store to destroy it, and ZopfliStoreLitLenDist to append values.
+
 */
 typedef struct ZopfliLZ77Store {
   unsigned short* litlens;  /* Lit or len. */
