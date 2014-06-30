@@ -20,6 +20,7 @@
 #include "zopflipng_lib.h"
 
 #include <stdio.h>
+#include <set>
 #include <vector>
 
 #include "lodepng/lodepng.h"
@@ -78,8 +79,29 @@ unsigned CustomPNGDeflate(unsigned char** out, size_t* outsize,
   return 0;  // OK
 }
 
+// Returns 32-bit integer value for RGBA color.
+static unsigned ColorIndex(const unsigned char* color) {
+  return color[0] + 256u * color[1] + 65536u * color[1] + 16777216u * color[3];
+}
+
+// Counts amount of colors in the image, up to 257. If transparent_counts_as_one
+// is enabled, any color with alpha channel 0 is treated as a single color with
+// index 0.
+void CountColors(std::set<unsigned>* unique,
+                 const unsigned char* image, unsigned w, unsigned h,
+                 bool transparent_counts_as_one) {
+  unique->clear();
+  for (size_t i = 0; i < w * h; i++) {
+    unsigned index = ColorIndex(&image[i * 4]);
+    if (transparent_counts_as_one && image[i * 4 + 3] == 0) index = 0;
+    unique->insert(index);
+    if (unique->size() > 256) break;
+  }
+}
+
 // Remove RGB information from pixels with alpha=0
-void LossyOptimizeTransparent(unsigned char* image, unsigned w, unsigned h) {
+void LossyOptimizeTransparent(lodepng::State* inputstate, unsigned char* image,
+    unsigned w, unsigned h) {
   // First check if we want to preserve potential color-key background color,
   // or instead use the last encountered RGB value all the time to save bytes.
   bool key = true;
@@ -89,13 +111,20 @@ void LossyOptimizeTransparent(unsigned char* image, unsigned w, unsigned h) {
       break;
     }
   }
+  std::set<unsigned> count;  // Color count, up to 257.
+  CountColors(&count, image, w, h, true);
+  // If true, means palette is possible so avoid using different RGB values for
+  // the transparent color.
+  bool palette = count.size() <= 256;
 
-  // Choose the color key if color keying is used.
+  // Choose the color key or first initial background color.
   int r = 0, g = 0, b = 0;
-  if (key) {
+  if (key || palette) {
     for (size_t i = 0; i < w * h; i++) {
       if (image[i * 4 + 3] == 0) {
-        // Use first encountered transparent pixel as the color key
+        // Use RGB value of first encountered transparent pixel. This can be
+        // used as a valid color key, or in case of palette ensures a color
+        // existing in the input image palette is used.
         r = image[i * 4 + 0];
         g = image[i * 4 + 1];
         b = image[i * 4 + 2];
@@ -104,17 +133,39 @@ void LossyOptimizeTransparent(unsigned char* image, unsigned w, unsigned h) {
   }
 
   for (size_t i = 0; i < w * h; i++) {
-    // if alpha is 0
+    // if alpha is 0, alter the RGB value to a possibly more efficient one.
     if (image[i * 4 + 3] == 0) {
       image[i * 4 + 0] = r;
       image[i * 4 + 1] = g;
       image[i * 4 + 2] = b;
     } else {
-      if (!key) {
-        // Use the last encountered RGB value if no color keying is used.
+      if (!key && !palette) {
+        // Use the last encountered RGB value if no key or palette is used: that
+        // way more values can be 0 thanks to the PNG filter types.
         r = image[i * 4 + 0];
         g = image[i * 4 + 1];
         b = image[i * 4 + 2];
+      }
+    }
+  }
+
+  // If there are now less colors, update palette of input image to match this.
+  if (palette && inputstate->info_png.color.palettesize > 0) {
+    CountColors(&count, image, w, h, false);
+    if (count.size() < inputstate->info_png.color.palettesize) {
+      std::vector<unsigned char> palette_out;
+      unsigned char* palette_in = inputstate->info_png.color.palette;
+      for (size_t i = 0; i < inputstate->info_png.color.palettesize; i++) {
+        if (count.count(ColorIndex(&palette_in[i * 4])) != 0) {
+          palette_out.push_back(palette_in[i * 4 + 0]);
+          palette_out.push_back(palette_in[i * 4 + 1]);
+          palette_out.push_back(palette_in[i * 4 + 2]);
+          palette_out.push_back(palette_in[i * 4 + 3]);
+        }
+      }
+      inputstate->info_png.color.palettesize = palette_out.size() / 4;
+      for (size_t i = 0; i < palette_out.size(); i++) {
+        palette_in[i] = palette_out[i];
       }
     }
   }
@@ -307,7 +358,6 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
     strategy_enable[png_options.filter_strategies[i]] = true;
   }
 
-
   std::vector<unsigned char> image;
   unsigned w, h;
   unsigned error;
@@ -332,7 +382,7 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
   if (!error) {
     // If lossy_transparent, remove RGB information from pixels with alpha=0
     if (png_options.lossy_transparent && !bit16) {
-      LossyOptimizeTransparent(&image[0], w, h);
+      LossyOptimizeTransparent(&inputstate, &image[0], w, h);
     }
 
     if (png_options.auto_filter_strategy) {

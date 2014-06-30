@@ -19,8 +19,8 @@
 // backend, chooses optimal PNG color model, and tries out several PNG filter
 // strategies.
 
-#ifndef UTIL_COMPRESSION_ZOPFLI_PNG_ZOPFLIPNG_LIB_H_
-#define UTIL_COMPRESSION_ZOPFLI_PNG_ZOPFLIPNG_LIB_H_
+#ifndef ZOPFLIPNG_LIB_H_
+#define ZOPFLIPNG_LIB_H_
 
 #include <string>
 #include <vector>
@@ -76,4 +76,4 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
     bool verbose,
     std::vector<unsigned char>* resultpng);
 
-#endif  // UTIL_COMPRESSION_ZOPFLI_PNG_ZOPFLIPNG_LIB_H_
+#endif  // ZOPFLIPNG_LIB_H_
