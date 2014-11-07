@@ -32,6 +32,11 @@ zopflipng:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) -c
 	$(CXX) $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CFLAGS) -o zopflipng
 
+# ZopfliPNG shared library
+libzopflipng:
+	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) -fPIC -c
+	$(CXX) $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(CFLAGS) -fPIC --shared -Wl,-soname,libzopflipng.so.1 -o libzopflipng.so.1.0.0
+
 # Remove all libraries and binaries
 clean:
 	rm -f zopflipng zopfli $(ZOPFLILIB_OBJ) libzopfli*
