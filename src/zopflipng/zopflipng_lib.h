@@ -22,8 +22,16 @@
 #ifndef ZOPFLIPNG_LIB_H_
 #define ZOPFLIPNG_LIB_H_
 
+#ifdef __cplusplus
+
 #include <string>
 #include <vector>
+
+extern "C" {
+
+#endif
+
+#include <stdlib.h>
 
 enum ZopfliPNGFilterStrategy {
   kStrategyZero = 0,
@@ -37,6 +45,49 @@ enum ZopfliPNGFilterStrategy {
   kStrategyBruteForce,
   kNumFilterStrategies /* Not a strategy but used for the size of this enum */
 };
+
+typedef struct CZopfliPNGOptions {
+  int lossy_transparent;
+  int lossy_8bit;
+
+  enum ZopfliPNGFilterStrategy* filter_strategies;
+  // How many strategies to try.
+  int num_filter_strategies;
+
+  int auto_filter_strategy;
+
+  char** keepchunks;
+  // How many entries in keepchunks.
+  int num_keepchunks;
+
+  int use_zopfli;
+
+  int num_iterations;
+
+  int num_iterations_large;
+
+  int block_split_strategy;
+} CZopfliPNGOptions;
+
+// Sets the default options
+// Does not allocate or set keepchunks or filter_strategies
+void CZopfliPNGSetDefaults(CZopfliPNGOptions *png_options);
+
+// Returns 0 on success, error code otherwise
+// The caller must free resultpng after use
+int CZopfliPNGOptimize(const unsigned char* origpng,
+    const size_t origpng_size,
+    const CZopfliPNGOptions* png_options,
+    int verbose,
+    unsigned char** resultpng,
+    size_t* resultpng_size);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif 
+
+// C++ API
+#ifdef __cplusplus
 
 struct ZopfliPNGOptions {
   ZopfliPNGOptions();
@@ -75,5 +126,7 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
     const ZopfliPNGOptions& png_options,
     bool verbose,
     std::vector<unsigned char>* resultpng);
+
+#endif  // __cplusplus
 
 #endif  // ZOPFLIPNG_LIB_H_
