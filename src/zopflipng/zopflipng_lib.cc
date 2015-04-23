@@ -253,7 +253,7 @@ unsigned TryOptimize(
     LodePNGColorMode& color = teststate.info_png.color;
     if (color.colortype == LCT_PALETTE) {
       std::vector<unsigned char> out2;
-      state.encoder.auto_convert = LAC_ALPHA;
+      state.encoder.auto_convert = true;
       bool grey = true;
       for (size_t i = 0; i < color.palettesize; i++) {
         if (color.palette[i * 4 + 0] != color.palette[i * 4 + 2]
