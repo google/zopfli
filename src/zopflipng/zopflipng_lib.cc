@@ -84,7 +84,7 @@ unsigned CustomPNGDeflate(unsigned char** out, size_t* outsize,
 
 // Returns 32-bit integer value for RGBA color.
 static unsigned ColorIndex(const unsigned char* color) {
-  return color[0] + 256u * color[1] + 65536u * color[1] + 16777216u * color[3];
+  return color[0] + 256u * color[1] + 65536u * color[2] + 16777216u * color[3];
 }
 
 // Counts amount of colors in the image, up to 257. If transparent_counts_as_one
