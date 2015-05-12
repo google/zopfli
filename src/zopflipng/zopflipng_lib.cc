@@ -371,7 +371,7 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
 
   if (error) {
     if (verbose) {
-      printf("Decoding error %i: %s\n", error, lodepng_error_text(error));
+      printf("Decoding error %u: %s\n", error, lodepng_error_text(error));
     }
     return error;
   }
