@@ -133,6 +133,7 @@ void LossyOptimizeTransparent(lodepng::State* inputstate, unsigned char* image,
         r = image[i * 4 + 0];
         g = image[i * 4 + 1];
         b = image[i * 4 + 2];
+        break;
       }
     }
   }
