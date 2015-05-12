@@ -32,6 +32,7 @@
 
 ZopfliPNGOptions::ZopfliPNGOptions()
   : lossy_transparent(false)
+  , verbose(false)
   , lossy_8bit(false)
   , auto_filter_strategy(true)
   , use_zopfli(true)
@@ -51,6 +52,7 @@ unsigned CustomPNGDeflate(unsigned char** out, size_t* outsize,
   ZopfliOptions options;
   ZopfliInitOptions(&options);
 
+  options.verbose = png_options->verbose;
   options.numiterations = insize < 200000
       ? png_options->num_iterations : png_options->num_iterations_large;
 

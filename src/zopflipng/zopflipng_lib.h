@@ -92,6 +92,8 @@ int CZopfliPNGOptimize(const unsigned char* origpng,
 struct ZopfliPNGOptions {
   ZopfliPNGOptions();
 
+  bool verbose;
+
   // Allow altering hidden colors of fully transparent pixels
   bool lossy_transparent;
   // Convert 16-bit per channel images to 8-bit per channel
