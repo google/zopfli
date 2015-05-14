@@ -71,6 +71,10 @@ Saves a file from a memory array, overwriting the file if it existed.
 static void SaveFile(const char* filename,
                      const unsigned char* in, size_t insize) {
   FILE* file = fopen(filename, "wb" );
+  if (file == NULL) {
+      fprintf(stderr,"Error: Cannot write to output file, terminating.\n");
+      exit (EXIT_FAILURE);
+  }
   assert(file);
   fwrite((char*)in, 1, insize, file);
   fclose(file);
