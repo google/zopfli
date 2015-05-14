@@ -33,6 +33,11 @@ decompressor.
 #include "gzip_container.h"
 #include "zlib_container.h"
 
+/* Windows workaround for stdout output. */
+#if _WIN32
+#include <fcntl.h>
+#endif
+
 /*
 Loads a file into a memory array.
 */
@@ -103,10 +108,17 @@ static void CompressFile(const ZopfliOptions* options,
     SaveFile(outfilename, out, outsize);
   } else {
     size_t i;
+/* Windows workaround for stdout output. */
+#if _WIN32
+    _setmode(_fileno(stdout), _O_BINARY);
+#endif
     for (i = 0; i < outsize; i++) {
       /* Works only if terminal does not convert newlines. */
       printf("%c", out[i]);
     }
+#if _WIN32
+    _setmode(_fileno(stdout), _O_TEXT);
+#endif
   }
 
   free(out);
