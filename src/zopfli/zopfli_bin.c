@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (options.numiterations < 1) {
-    fprintf(stderr, "Error: must have 1 or more iterations");
+    fprintf(stderr, "Error: must have 1 or more iterations\n");
     return 0;
   }
 
