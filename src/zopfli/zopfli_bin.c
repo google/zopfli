@@ -52,6 +52,10 @@ static void LoadFile(const char* filename,
 
   fseek(file , 0 , SEEK_END);
   *outsize = ftell(file);
+  if(*outsize > 2147483647) {
+    fprintf(stderr,"Files larger than 2GB are not supported.\n");
+    exit(EXIT_FAILURE);
+  }
   rewind(file);
 
   *out = (unsigned char*)malloc(*outsize);
