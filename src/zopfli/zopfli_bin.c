@@ -150,7 +150,7 @@ int main(int argc, char* argv[]) {
     }
     else if (StringsEqual(arg, "-h")) {
       fprintf(stderr,
-          "Usage: zopfli [OPTION]... FILE\n"
+          "Usage: zopfli [OPTION]... FILE...\n"
           "  -h    gives this help\n"
           "  -c    write the result on standard output, instead of disk"
           " filename + '.gz'\n"
