@@ -30,7 +30,7 @@ The output is tailored for DEFLATE: symbols that never occur, get a bit length
 of 0, and if only a single symbol occurs at least once, its bitlength will be 1,
 and not 0 as would theoretically be needed for a single symbol.
 
-frequencies: The amount of occurances of each symbol.
+frequencies: The amount of occurrences of each symbol.
 n: The amount of symbols.
 maxbits: Maximum bit length, inclusive.
 bitlengths: Output, the bitlengths for the symbol prefix codes.
