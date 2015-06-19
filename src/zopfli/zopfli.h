@@ -45,6 +45,13 @@ typedef struct ZopfliOptions {
   int numiterations;
 
   /*
+  Maximum number of seconds of CPU time to spend on iterations.
+  Iteration ends when the time is exceeded.
+  Default: 0 (no limit).
+  */
+  double iterationlimitseconds;
+
+  /*
   If true, splits the data in multiple deflate blocks with optimal choice
   for the block boundaries. Block splitting gives better compression. Default:
   true (1).

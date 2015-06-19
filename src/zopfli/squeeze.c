@@ -22,6 +22,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "blocksplitter.h"
 #include "deflate.h"
@@ -446,7 +447,8 @@ static double LZ77OptimalRun(ZopfliBlockState* s,
 
 void ZopfliLZ77Optimal(ZopfliBlockState *s,
                        const unsigned char* in, size_t instart, size_t inend,
-                       ZopfliLZ77Store* store) {
+                       ZopfliLZ77Store* store,
+                       double iterationlimitseconds) {
   /* Dist to get to here with smallest cost. */
   size_t blocksize = inend - instart;
   unsigned short* length_array =
@@ -462,6 +464,9 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   /* Try randomizing the costs a bit once the size stabilizes. */
   RanState ran_state;
   int lastrandomstep = -1;
+#ifdef CLOCKS_PER_SEC
+  clock_t start;
+#endif
 
   if (!length_array) exit(-1); /* Allocation failed. */
 
@@ -475,6 +480,13 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   /* Initial run. */
   ZopfliLZ77Greedy(s, in, instart, inend, &currentstore);
   GetStatistics(&currentstore, &stats);
+
+
+#ifdef CLOCKS_PER_SEC
+  if (iterationlimitseconds > 0) {
+    start = clock();
+  }
+#endif
 
   /* Repeat statistics with each time the cost model from the previous stat
   run. */
@@ -512,6 +524,19 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
       lastrandomstep = i;
     }
     lastcost = cost;
+
+#ifdef CLOCKS_PER_SEC
+    if (iterationlimitseconds > 0) {
+      double diff_sec = (double)(clock()-start)/CLOCKS_PER_SEC;
+      if (diff_sec >= iterationlimitseconds) {
+        if (s->options->verbose_more) {
+          fprintf(stderr, "Stopped after %d iterations due to time limit %f\n", i, diff_sec);
+        }
+        break;
+      }
+    }
+#endif
+
   }
 
   free(length_array);

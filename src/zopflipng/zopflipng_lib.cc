@@ -56,6 +56,8 @@ unsigned CustomPNGDeflate(unsigned char** out, size_t* outsize,
   options.numiterations = insize < 200000
       ? png_options->num_iterations : png_options->num_iterations_large;
 
+  options.iterationlimitseconds = png_options->iterations_time_limit;
+
   if (png_options->block_split_strategy == 3) {
     // Try both block splitting first and last.
     unsigned char* out2 = 0;

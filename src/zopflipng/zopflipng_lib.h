@@ -118,6 +118,9 @@ struct ZopfliPNGOptions {
   // Zopfli number of iterations on large images
   int num_iterations_large;
 
+  // Time to spend on iterations (in seconds, 0 = no limit)
+  int iterations_time_limit;
+
   // 0=none, 1=first, 2=last, 3=both
   int block_split_strategy;
 };

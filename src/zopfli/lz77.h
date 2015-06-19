@@ -70,6 +70,10 @@ typedef struct ZopfliBlockState {
   /* The start (inclusive) and end (not inclusive) of the current block. */
   size_t blockstart;
   size_t blockend;
+
+  /* if non-0, CPU time limit for iterations on this block
+     (proportional slice of overall iteration time limit) */
+  double blockiterationlimit;
 } ZopfliBlockState;
 
 /*
