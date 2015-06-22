@@ -79,6 +79,7 @@ void ShowHelp() {
          " considered as output from previous runs. This is handy when using"
          " *.png wildcard expansion with multiple runs.\n"
          "-y: do not ask about overwriting files.\n"
+         "--inplace: Overwrite the input file(s). Implies -y.\n"
          "--lossy_transparent: remove colors behind alpha channel 0. No visual"
          " difference, removes hidden information.\n"
          "--lossy_8bit: convert 16-bit per channel image to 8-bit per"
@@ -149,6 +150,7 @@ int main(int argc, char *argv[]) {
   std::string user_out_filename;  // output filename if no prefix is used
   bool use_prefix = false;
   std::string prefix = "zopfli_";  // prefix for output filenames
+  bool inplace = false;
 
   std::vector<std::string> files;
   for (int i = 1; i < argc; i++) {
@@ -232,6 +234,10 @@ int main(int argc, char *argv[]) {
       } else if (name == "--prefix") {
         use_prefix = true;
         if (!value.empty()) prefix = value;
+      } else if (name == "--inplace") {
+        use_prefix = false;
+        yes = true;
+        inplace = true;
       } else if (name == "--help") {
         ShowHelp();
         return 0;
@@ -244,7 +250,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (!use_prefix) {
+  if (!use_prefix && !inplace) {
     if (files.size() == 2) {
       // The second filename is the output instead of an input if no prefix is
       // given.
@@ -325,6 +331,9 @@ int main(int argc, char *argv[]) {
         std::string dir, file, ext;
         GetFileNameParts(files[i], &dir, &file, &ext);
         out_filename = dir + prefix + file + ext;
+      }
+      if (inplace) {
+        out_filename = files[i];
       }
       bool different_output_name = out_filename != files[i];
 
