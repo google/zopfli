@@ -33,6 +33,11 @@ decompressor.
 #include "gzip_container.h"
 #include "zlib_container.h"
 
+/* Windows workaround for stdout output. */
+#if _WIN32
+#include <fcntl.h>
+#endif
+
 /*
 Loads a file into a memory array.
 */
@@ -47,6 +52,10 @@ static void LoadFile(const char* filename,
 
   fseek(file , 0 , SEEK_END);
   *outsize = ftell(file);
+  if(*outsize > 2147483647) {
+    fprintf(stderr,"Files larger than 2GB are not supported.\n");
+    exit(EXIT_FAILURE);
+  }
   rewind(file);
 
   *out = (unsigned char*)malloc(*outsize);
@@ -71,6 +80,10 @@ Saves a file from a memory array, overwriting the file if it existed.
 static void SaveFile(const char* filename,
                      const unsigned char* in, size_t insize) {
   FILE* file = fopen(filename, "wb" );
+  if (file == NULL) {
+      fprintf(stderr,"Error: Cannot write to output file, terminating.\n");
+      exit (EXIT_FAILURE);
+  }
   assert(file);
   fwrite((char*)in, 1, insize, file);
   fclose(file);
@@ -99,10 +112,17 @@ static void CompressFile(const ZopfliOptions* options,
     SaveFile(outfilename, out, outsize);
   } else {
     size_t i;
+/* Windows workaround for stdout output. */
+#if _WIN32
+    _setmode(_fileno(stdout), _O_BINARY);
+#endif
     for (i = 0; i < outsize; i++) {
       /* Works only if terminal does not convert newlines. */
       printf("%c", out[i]);
     }
+#if _WIN32
+    _setmode(_fileno(stdout), _O_TEXT);
+#endif
   }
 
   free(out);
@@ -168,7 +188,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (options.numiterations < 1) {
-    fprintf(stderr, "Error: must have 1 or more iterations");
+    fprintf(stderr, "Error: must have 1 or more iterations\n");
     return 0;
   }
 
