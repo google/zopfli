@@ -33,6 +33,9 @@ void ZopfliInitCache(size_t blocksize, ZopfliLongestMatchCache* lmc) {
   lmc->sublen = (unsigned char*)malloc(ZOPFLI_CACHE_LENGTH * 3 * blocksize);
   if(lmc->sublen == NULL) {
     fprintf(stderr,"Error: Out of memory. Tried allocating %lu bytes of memory.\n",(unsigned long)(ZOPFLI_CACHE_LENGTH * 3 * blocksize));
+    /* The length and dist variables are already allocated.
+    They should be given back to memory.*/
+    ZopfliCleanCache(lmc);
     exit (EXIT_FAILURE);
   }
 
@@ -44,9 +47,13 @@ void ZopfliInitCache(size_t blocksize, ZopfliLongestMatchCache* lmc) {
 }
 
 void ZopfliCleanCache(ZopfliLongestMatchCache* lmc) {
-  free(lmc->length);
-  free(lmc->dist);
-  free(lmc->sublen);
+	/*All variables should be checked for availability to release.*/
+	if(lmc->length != NULL)
+  	free(lmc->length);
+  if(lmc->dist != NULL)
+  	free(lmc->dist);
+  if(lmc->sublen != NULL)
+  	free(lmc->sublen);
 }
 
 void ZopfliSublenToCache(const unsigned short* sublen,
