@@ -31,8 +31,8 @@
 #include "../zopfli/deflate.h"
 
 ZopfliPNGOptions::ZopfliPNGOptions()
-  : lossy_transparent(false)
-  , verbose(false)
+  : verbose(false)
+  , lossy_transparent(false)
   , lossy_8bit(false)
   , auto_filter_strategy(true)
   , use_zopfli(true)
