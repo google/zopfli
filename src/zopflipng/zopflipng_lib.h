@@ -84,7 +84,7 @@ int CZopfliPNGOptimize(const unsigned char* origpng,
 
 #ifdef __cplusplus
 }  // extern "C"
-#endif 
+#endif
 
 // C++ API
 #ifdef __cplusplus
@@ -118,7 +118,7 @@ struct ZopfliPNGOptions {
   // Zopfli number of iterations on large images
   int num_iterations_large;
 
-  // 0=none, 1=first, 2=last, 3=both
+  // Unused, left for backwards compatiblity.
   int block_split_strategy;
 };
 

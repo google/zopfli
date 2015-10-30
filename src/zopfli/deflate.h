@@ -25,6 +25,7 @@ Functions to compress according to the DEFLATE specification, using the
 "squeeze" LZ77 compression backend.
 */
 
+#include "lz77.h"
 #include "zopfli.h"
 
 #ifdef __cplusplus
@@ -75,9 +76,14 @@ dists: ll77 distances
 lstart: start of block
 lend: end of block (not inclusive)
 */
-double ZopfliCalculateBlockSize(const unsigned short* litlens,
-                                const unsigned short* dists,
+double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77,
                                 size_t lstart, size_t lend, int btype);
+
+/*
+Calculates block size in bits, automatically using the best btype.
+*/
+double ZopfliCalculateBlockSizeAutoType(const ZopfliLZ77Store* lz77,
+                                        size_t lstart, size_t lend);
 
 #ifdef __cplusplus
 }  // extern "C"

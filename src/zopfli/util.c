@@ -203,6 +203,22 @@ int ZopfliGetLengthSymbol(int l) {
   return table[l];
 }
 
+int ZopfliGetLengthSymbolExtraBits(int s) {
+  static const int table[29] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
+    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0
+  };
+  return table[s - 257];
+}
+
+int ZopfliGetDistSymbolExtraBits(int s) {
+  static const int table[30] = {
+    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8,
+    9, 9, 10, 10, 11, 11, 12, 12, 13, 13
+  };
+  return table[s];
+}
+
 void ZopfliInitOptions(ZopfliOptions* options) {
   options->verbose = 0;
   options->verbose_more = 0;

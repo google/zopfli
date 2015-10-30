@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
     }
     else if (StringsEqual(arg, "--zlib")) output_type = ZOPFLI_FORMAT_ZLIB;
     else if (StringsEqual(arg, "--gzip")) output_type = ZOPFLI_FORMAT_GZIP;
-    else if (StringsEqual(arg, "--splitlast")) options.blocksplittinglast = 1;
+    else if (StringsEqual(arg, "--splitlast"))  /* Ignore */;
     else if (arg[0] == '-' && arg[1] == '-' && arg[2] == 'i'
         && arg[3] >= '0' && arg[3] <= '9') {
       options.numiterations = atoi(arg + 3);
@@ -181,7 +181,7 @@ int main(int argc, char* argv[]) {
           "  --gzip        output to gzip format (default)\n"
           "  --zlib        output to zlib format instead of gzip\n"
           "  --deflate     output to deflate format instead of gzip\n"
-          "  --splitlast   do block splitting last instead of first\n");
+          "  --splitlast   ignored, left for backwards compatibility\n");
       return 0;
     }
   }

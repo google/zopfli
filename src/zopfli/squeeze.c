@@ -30,30 +30,34 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 typedef struct SymbolStats {
   /* The literal and length symbols. */
-  size_t litlens[288];
+  size_t litlens[ZOPFLI_NUM_LL];
   /* The 32 unique dist symbols, not the 32768 possible dists. */
-  size_t dists[32];
+  size_t dists[ZOPFLI_NUM_D];
 
-  double ll_symbols[288];  /* Length of each lit/len symbol in bits. */
-  double d_symbols[32];  /* Length of each dist symbol in bits. */
+  /* Length of each lit/len symbol in bits. */
+  double ll_symbols[ZOPFLI_NUM_LL];
+  /* Length of each dist symbol in bits. */
+  double d_symbols[ZOPFLI_NUM_D];
 } SymbolStats;
 
 /* Sets everything to 0. */
 static void InitStats(SymbolStats* stats) {
-  memset(stats->litlens, 0, 288 * sizeof(stats->litlens[0]));
-  memset(stats->dists, 0, 32 * sizeof(stats->dists[0]));
+  memset(stats->litlens, 0, ZOPFLI_NUM_LL * sizeof(stats->litlens[0]));
+  memset(stats->dists, 0, ZOPFLI_NUM_D * sizeof(stats->dists[0]));
 
-  memset(stats->ll_symbols, 0, 288 * sizeof(stats->ll_symbols[0]));
-  memset(stats->d_symbols, 0, 32 * sizeof(stats->d_symbols[0]));
+  memset(stats->ll_symbols, 0, ZOPFLI_NUM_LL * sizeof(stats->ll_symbols[0]));
+  memset(stats->d_symbols, 0, ZOPFLI_NUM_D * sizeof(stats->d_symbols[0]));
 }
 
 static void CopyStats(SymbolStats* source, SymbolStats* dest) {
-  memcpy(dest->litlens, source->litlens, 288 * sizeof(dest->litlens[0]));
-  memcpy(dest->dists, source->dists, 32 * sizeof(dest->dists[0]));
+  memcpy(dest->litlens, source->litlens,
+         ZOPFLI_NUM_LL * sizeof(dest->litlens[0]));
+  memcpy(dest->dists, source->dists, ZOPFLI_NUM_D * sizeof(dest->dists[0]));
 
   memcpy(dest->ll_symbols, source->ll_symbols,
-         288 * sizeof(dest->ll_symbols[0]));
-  memcpy(dest->d_symbols, source->d_symbols, 32 * sizeof(dest->d_symbols[0]));
+         ZOPFLI_NUM_LL * sizeof(dest->ll_symbols[0]));
+  memcpy(dest->d_symbols, source->d_symbols,
+         ZOPFLI_NUM_D * sizeof(dest->d_symbols[0]));
 }
 
 /* Adds the bit lengths. */
@@ -61,11 +65,11 @@ static void AddWeighedStatFreqs(const SymbolStats* stats1, double w1,
                                 const SymbolStats* stats2, double w2,
                                 SymbolStats* result) {
   size_t i;
-  for (i = 0; i < 288; i++) {
+  for (i = 0; i < ZOPFLI_NUM_LL; i++) {
     result->litlens[i] =
         (size_t) (stats1->litlens[i] * w1 + stats2->litlens[i] * w2);
   }
-  for (i = 0; i < 32; i++) {
+  for (i = 0; i < ZOPFLI_NUM_D; i++) {
     result->dists[i] =
         (size_t) (stats1->dists[i] * w1 + stats2->dists[i] * w2);
   }
@@ -96,15 +100,15 @@ static void RandomizeFreqs(RanState* state, size_t* freqs, int n) {
 }
 
 static void RandomizeStatFreqs(RanState* state, SymbolStats* stats) {
-  RandomizeFreqs(state, stats->litlens, 288);
-  RandomizeFreqs(state, stats->dists, 32);
+  RandomizeFreqs(state, stats->litlens, ZOPFLI_NUM_LL);
+  RandomizeFreqs(state, stats->dists, ZOPFLI_NUM_D);
   stats->litlens[256] = 1;  /* End symbol. */
 }
 
 static void ClearStatFreqs(SymbolStats* stats) {
   size_t i;
-  for (i = 0; i < 288; i++) stats->litlens[i] = 0;
-  for (i = 0; i < 32; i++) stats->dists[i] = 0;
+  for (i = 0; i < ZOPFLI_NUM_LL; i++) stats->litlens[i] = 0;
+  for (i = 0; i < ZOPFLI_NUM_D; i++) stats->dists[i] = 0;
 }
 
 /*
@@ -369,11 +373,11 @@ static void FollowPath(ZopfliBlockState* s,
                              &dist, &dummy_length);
       assert(!(dummy_length != length && length > 2 && dummy_length > 2));
       ZopfliVerifyLenDist(in, inend, pos, dist, length);
-      ZopfliStoreLitLenDist(length, dist, store);
+      ZopfliStoreLitLenDist(length, dist, pos, store);
       total_length_test += length;
     } else {
       length = 1;
-      ZopfliStoreLitLenDist(in[pos], 0, store);
+      ZopfliStoreLitLenDist(in[pos], 0, pos, store);
       total_length_test++;
     }
 
@@ -391,8 +395,8 @@ static void FollowPath(ZopfliBlockState* s,
 
 /* Calculates the entropy of the statistics */
 static void CalculateStatistics(SymbolStats* stats) {
-  ZopfliCalculateEntropy(stats->litlens, 288, stats->ll_symbols);
-  ZopfliCalculateEntropy(stats->dists, 32, stats->d_symbols);
+  ZopfliCalculateEntropy(stats->litlens, ZOPFLI_NUM_LL, stats->ll_symbols);
+  ZopfliCalculateEntropy(stats->dists, ZOPFLI_NUM_D, stats->d_symbols);
 }
 
 /* Appends the symbol statistics from the store. */
@@ -446,6 +450,7 @@ static double LZ77OptimalRun(ZopfliBlockState* s,
 
 void ZopfliLZ77Optimal(ZopfliBlockState *s,
                        const unsigned char* in, size_t instart, size_t inend,
+                       int numiterations,
                        ZopfliLZ77Store* store) {
   /* Dist to get to here with smallest cost. */
   size_t blocksize = inend - instart;
@@ -467,7 +472,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
 
   InitRanState(&ran_state);
   InitStats(&stats);
-  ZopfliInitLZ77Store(&currentstore);
+  ZopfliInitLZ77Store(in, &currentstore);
 
   /* Do regular deflate, then loop multiple shortest path runs, each time using
   the statistics of the previous run. */
@@ -478,14 +483,13 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
 
   /* Repeat statistics with each time the cost model from the previous stat
   run. */
-  for (i = 0; i < s->options->numiterations; i++) {
+  for (i = 0; i < numiterations; i++) {
     ZopfliCleanLZ77Store(&currentstore);
-    ZopfliInitLZ77Store(&currentstore);
+    ZopfliInitLZ77Store(in, &currentstore);
     LZ77OptimalRun(s, in, instart, inend, &path, &pathsize,
                    length_array, GetCostStat, (void*)&stats,
                    &currentstore);
-    cost = ZopfliCalculateBlockSize(currentstore.litlens, currentstore.dists,
-                                    0, currentstore.size, 2);
+    cost = ZopfliCalculateBlockSize(&currentstore, 0, currentstore.size, 2);
     if (s->options->verbose_more || (s->options->verbose && cost < bestcost)) {
       fprintf(stderr, "Iteration %d: %d bit\n", i, (int) cost);
     }

@@ -30,21 +30,17 @@ ones that enhance it.
 
 #include <stdlib.h>
 
+#include "lz77.h"
 #include "zopfli.h"
 
 
 /*
 Does blocksplitting on LZ77 data.
 The output splitpoints are indices in the LZ77 data.
-litlens: lz77 lit/lengths
-dists: lz77 distances
-llsize: size of litlens and dists
 maxblocks: set a limit to the amount of blocks. Set to 0 to mean no limit.
 */
 void ZopfliBlockSplitLZ77(const ZopfliOptions* options,
-                          const unsigned short* litlens,
-                          const unsigned short* dists,
-                          size_t llsize, size_t maxblocks,
+                          const ZopfliLZ77Store* lz77, size_t maxblocks,
                           size_t** splitpoints, size_t* npoints);
 
 /*

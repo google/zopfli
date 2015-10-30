@@ -52,10 +52,7 @@ typedef struct ZopfliOptions {
   int blocksplitting;
 
   /*
-  If true, chooses the optimal block split points only after doing the iterative
-  LZ77 compression. If false, chooses the block split points first, then does
-  iterative LZ77 on each individual block. Depending on the file, either first
-  or last gives the best compression. Default: false (0).
+  No longer used, left for compatibility.
   */
   int blocksplittinglast;
 

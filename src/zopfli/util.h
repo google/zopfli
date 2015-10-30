@@ -32,6 +32,10 @@ basic deflate specification values and generic program options.
 #define ZOPFLI_MAX_MATCH 258
 #define ZOPFLI_MIN_MATCH 3
 
+/* Number of distinct literal/length and distance symbols in DEFLATE */
+#define ZOPFLI_NUM_LL 288
+#define ZOPFLI_NUM_D 32
+
 /*
 The window size for deflate. Must be a power of two. This should be 32768, the
 maximum possible by the deflate spec. Anything less hurts compression more than
@@ -136,6 +140,12 @@ int ZopfliGetDistExtraBits(int dist);
 
 /* Gets value of the extra bits for the given dist, cfr. the DEFLATE spec. */
 int ZopfliGetDistExtraBitsValue(int dist);
+
+/* Gets the amount of extra bits for the given length symbol. */
+int ZopfliGetLengthSymbolExtraBits(int s);
+
+/* Gets the amount of extra bits for the given distance symbol. */
+int ZopfliGetDistSymbolExtraBits(int s);
 
 /*
 Appends value to dynamically allocated memory, doubling its allocation size

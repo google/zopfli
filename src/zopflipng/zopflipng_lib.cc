@@ -56,30 +56,7 @@ unsigned CustomPNGDeflate(unsigned char** out, size_t* outsize,
   options.numiterations = insize < 200000
       ? png_options->num_iterations : png_options->num_iterations_large;
 
-  if (png_options->block_split_strategy == 3) {
-    // Try both block splitting first and last.
-    unsigned char* out2 = 0;
-    size_t outsize2 = 0;
-    options.blocksplittinglast = 0;
-    ZopfliDeflate(&options, 2 /* Dynamic */, 1, in, insize, &bp, out, outsize);
-    bp = 0;
-    options.blocksplittinglast = 1;
-    ZopfliDeflate(&options, 2 /* Dynamic */, 1,
-                  in, insize, &bp, &out2, &outsize2);
-
-    if (outsize2 < *outsize) {
-      free(*out);
-      *out = out2;
-      *outsize = outsize2;
-      printf("Block splitting last was better\n");
-    } else {
-      free(out2);
-    }
-  } else {
-    if (png_options->block_split_strategy == 0) options.blocksplitting = 0;
-    options.blocksplittinglast = png_options->block_split_strategy == 2;
-    ZopfliDeflate(&options, 2 /* Dynamic */, 1, in, insize, &bp, out, outsize);
-  }
+  ZopfliDeflate(&options, 2 /* Dynamic */, 1, in, insize, &bp, out, outsize);
 
   return 0;  // OK
 }
@@ -431,7 +408,7 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
 }
 
 extern "C" void CZopfliPNGSetDefaults(CZopfliPNGOptions* png_options) {
-    
+
   memset(png_options, 0, sizeof(*png_options));
   // Constructor sets the defaults
   ZopfliPNGOptions opts;
