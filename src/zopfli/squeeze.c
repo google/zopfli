@@ -421,7 +421,7 @@ instart: where to start
 inend: where to stop (not inclusive)
 path: pointer to dynamically allocated memory to store the path
 pathsize: pointer to the size of the dynamic path array
-length_array: array if size (inend - instart) used to store lengths
+length_array: array of size (inend - instart) used to store lengths
 costmodel: function to use as the cost model for this squeeze run
 costcontext: abstract context for the costmodel function
 store: place to output the LZ77 data

@@ -374,7 +374,7 @@ static size_t AbsDiff(size_t x, size_t y) {
 }
 
 /*
-Change the population counts in a way that the consequent Hufmann tree
+Change the population counts in a way that the consequent Huffman tree
 compression, especially its rle-part will be more likely to compress this data
 more efficiently. length containts the size of the histogram.
 */
@@ -849,19 +849,19 @@ void ZopfliDeflate(const ZopfliOptions* options, int btype, int final,
   ZopfliDeflatePart(options, btype, final, in, 0, insize, bp, out, outsize);
 #else
   size_t i = 0;
-  while (i < insize) {
+  do {
     int masterfinal = (i + ZOPFLI_MASTER_BLOCK_SIZE >= insize);
     int final2 = final && masterfinal;
     size_t size = masterfinal ? insize - i : ZOPFLI_MASTER_BLOCK_SIZE;
     ZopfliDeflatePart(options, btype, final2,
                       in, i, i + size, bp, out, outsize);
     i += size;
-  }
+  } while (i < insize);
 #endif
   if (options->verbose) {
     fprintf(stderr,
-            "Original Size: %d, Deflate: %d, Compression: %f%% Removed\n",
-            (int)insize, (int)(*outsize - offset),
+            "Original Size: %lu, Deflate: %lu, Compression: %f%% Removed\n",
+            (unsigned long)insize, (unsigned long)(*outsize - offset),
             100.0 * (double)(insize - (*outsize - offset)) / (double)insize);
   }
 }

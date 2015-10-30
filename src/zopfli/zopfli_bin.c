@@ -39,16 +39,17 @@ decompressor.
 #endif
 
 /*
-Loads a file into a memory array.
+Loads a file into a memory array. Returns 1 on success, 0 if file doesn't exist
+or couldn't be opened.
 */
-static void LoadFile(const char* filename,
-                     unsigned char** out, size_t* outsize) {
+static int LoadFile(const char* filename,
+                    unsigned char** out, size_t* outsize) {
   FILE* file;
 
   *out = 0;
   *outsize = 0;
   file = fopen(filename, "rb");
-  if (!file) return;
+  if (!file) return 0;
 
   fseek(file , 0 , SEEK_END);
   *outsize = ftell(file);
@@ -67,11 +68,14 @@ static void LoadFile(const char* filename,
       free(*out);
       *out = 0;
       *outsize = 0;
+      fclose(file);
+      return 0;
     }
   }
 
   assert(!(*outsize) || out);  /* If size is not zero, out must be allocated. */
   fclose(file);
+  return 1;
 }
 
 /*
@@ -100,8 +104,7 @@ static void CompressFile(const ZopfliOptions* options,
   size_t insize;
   unsigned char* out = 0;
   size_t outsize = 0;
-  LoadFile(infilename, &in, &insize);
-  if (insize == 0) {
+  if (!LoadFile(infilename, &in, &insize)) {
     fprintf(stderr, "Invalid filename: %s\n", infilename);
     return;
   }
