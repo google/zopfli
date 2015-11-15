@@ -25,8 +25,18 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include <stdio.h>
 #include <stdlib.h>
 
+/* __has_builtin available in clang */
+#ifdef __has_builtin
+# if __has_builtin(__builtin_clz)
+#   define HAS_BUILTIN_CLZ
+# endif
+/* __builtin_clz available beginning with GCC 3.4 */
+#elif __GNUC__ * 100 + __GNUC_MINOR__ >= 304
+# define HAS_BUILTIN_CLZ
+#endif
+
 int ZopfliGetDistExtraBits(int dist) {
-#ifdef __GNUC__
+#ifdef HAS_BUILTIN_CLZ
   if (dist < 5) return 0;
   return (31 ^ __builtin_clz(dist - 1)) - 1; /* log2(dist - 1) - 1 */
 #else
@@ -48,7 +58,7 @@ int ZopfliGetDistExtraBits(int dist) {
 }
 
 int ZopfliGetDistExtraBitsValue(int dist) {
-#ifdef __GNUC__
+#ifdef HAS_BUILTIN_CLZ
   if (dist < 5) {
     return 0;
   } else {
@@ -74,7 +84,7 @@ int ZopfliGetDistExtraBitsValue(int dist) {
 }
 
 int ZopfliGetDistSymbol(int dist) {
-#ifdef __GNUC__
+#ifdef HAS_BUILTIN_CLZ
   if (dist < 5) {
     return dist - 1;
   } else {
