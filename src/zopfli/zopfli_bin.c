@@ -43,7 +43,7 @@ Loads a file into a memory array. Returns 1 on success, 0 if file doesn't exist
 or couldn't be opened.
 */
 static int LoadFile(const char* filename,
-                    unsigned char** out, size_t* outsize) {
+                     unsigned char** out, size_t* outsize) {
   FILE* file;
 
   *out = 0;
@@ -188,7 +188,7 @@ int main(int argc, char* argv[]) {
 
   if (options.numiterations < 1) {
     fprintf(stderr, "Error: must have 1 or more iterations\n");
-    return 0;
+    return 1;
   }
 
   for (i = 1; i < argc; i++) {
