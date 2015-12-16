@@ -95,8 +95,9 @@ static void SaveFile(const char* filename,
 
 /*
 outfilename: filename to write output to, or 0 to write to stdout instead
+returns 1 on error
 */
-static void CompressFile(const ZopfliOptions* options,
+static int CompressFile(const ZopfliOptions* options,
                          ZopfliFormat output_type,
                          const char* infilename,
                          const char* outfilename) {
@@ -106,7 +107,7 @@ static void CompressFile(const ZopfliOptions* options,
   size_t outsize = 0;
   if (!LoadFile(infilename, &in, &insize)) {
     fprintf(stderr, "Invalid filename: %s\n", infilename);
-    return;
+    return 1;
   }
 
   ZopfliCompress(options, output_type, in, insize, &out, &outsize);
@@ -126,6 +127,7 @@ static void CompressFile(const ZopfliOptions* options,
 
   free(out);
   free(in);
+  return 0;
 }
 
 /*
@@ -149,6 +151,7 @@ int main(int argc, char* argv[]) {
   ZopfliFormat output_type = ZOPFLI_FORMAT_GZIP;
   const char* filename = 0;
   int output_to_stdout = 0;
+  int total_errors = 0;
   int i;
 
   ZopfliInitOptions(&options);
@@ -208,7 +211,7 @@ int main(int argc, char* argv[]) {
       if (options.verbose && outfilename) {
         fprintf(stderr, "Saving to: %s\n", outfilename);
       }
-      CompressFile(&options, output_type, filename, outfilename);
+      total_errors += CompressFile(&options, output_type, filename, outfilename);
       free(outfilename);
     }
   }
@@ -216,7 +219,8 @@ int main(int argc, char* argv[]) {
   if (!filename) {
     fprintf(stderr,
             "Please provide filename\nFor help, type: %s -h\n", argv[0]);
+    return 1;
   }
 
-  return 0;
+  return total_errors > 255 ? 255 : total_errors;
 }
