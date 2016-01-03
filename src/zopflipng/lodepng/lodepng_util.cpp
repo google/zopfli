@@ -221,7 +221,8 @@ unsigned getFilterTypesInterlaced(std::vector<std::vector<unsigned char> >& filt
     {
       unsigned w2 = (w - ADAM7_IX[j] + ADAM7_DX[j] - 1) / ADAM7_DX[j];
       unsigned h2 = (h - ADAM7_IY[j] + ADAM7_DY[j] - 1) / ADAM7_DY[j];
-      if(ADAM7_IX[j] >= w || ADAM7_IY[j] >= h) w2 = h2 = 0;
+      if(ADAM7_IX[j] >= w) w2 = 0;
+      if(ADAM7_IY[j] >= h) h2 = 0;
       size_t linebytes = 1 + lodepng_get_raw_size(w2, 1, &state.info_png.color);
       for(size_t i = 0; i < h2; i++)
       {
