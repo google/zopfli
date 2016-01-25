@@ -209,6 +209,7 @@ unsigned TryOptimize(
       break;
     case kStrategyPredefined:
       lodepng::getFilterTypes(filters, origfile);
+      if (filters.size() != h) return 1; // Error getting filters
       state.encoder.filter_strategy = LFS_PREDEFINED;
       state.encoder.predefined_filters = &filters[0];
       break;
@@ -227,20 +228,24 @@ unsigned TryOptimize(
     lodepng::State teststate;
     std::vector<unsigned char> temp;
     lodepng::decode(temp, w, h, teststate, *out);
-    LodePNGColorMode& color = teststate.info_png.color;
-    if (color.colortype == LCT_PALETTE) {
-      std::vector<unsigned char> out2;
-      state.encoder.auto_convert = LAC_ALPHA;
-      bool grey = true;
-      for (size_t i = 0; i < color.palettesize; i++) {
-        if (color.palette[i * 4 + 0] != color.palette[i * 4 + 2]
-            || color.palette[i * 4 + 1] != color.palette[i * 4 + 2]) {
-          grey = false;
-          break;
-        }
+    if (teststate.info_png.color.colortype == LCT_PALETTE) {
+      LodePNGColorProfile profile;
+      lodepng_color_profile_init(&profile);
+      lodepng_get_color_profile(&profile, &image[0], w, h, &state.info_raw);
+      // Too small for tRNS chunk overhead.
+      if (w * h <= 16 && profile.key) profile.alpha = 1;
+      state.encoder.auto_convert = 0;
+      state.info_png.color.colortype = (profile.alpha ? LCT_RGBA : LCT_RGB);
+      state.info_png.color.bitdepth = 8;
+      state.info_png.color.key_defined = (profile.key && !profile.alpha);
+      if (state.info_png.color.key_defined) {
+        state.info_png.color.key_defined = 1;
+        state.info_png.color.key_r = (profile.key_r & 255u);
+        state.info_png.color.key_g = (profile.key_g & 255u);
+        state.info_png.color.key_b = (profile.key_b & 255u);
       }
-      if (grey) state.info_png.color.colortype = LCT_GREY_ALPHA;
 
+      std::vector<unsigned char> out2;
       error = lodepng::encode(out2, image, w, h, state);
       if (out2.size() < out->size()) out->swap(out2);
     }
@@ -349,7 +354,11 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
 
   if (error) {
     if (verbose) {
-      printf("Decoding error %u: %s\n", error, lodepng_error_text(error));
+      if (error == 1) {
+        printf("Decoding error\n");
+      } else {
+        printf("Decoding error %u: %s\n", error, lodepng_error_text(error));
+      }
     }
     return error;
   }

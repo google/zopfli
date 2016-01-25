@@ -285,10 +285,15 @@ int main(int argc, char *argv[]) {
     std::vector<unsigned char> resultpng;
 
     lodepng::load_file(origpng, files[i]);
-    error = ZopfliPNGOptimize(origpng, png_options, true, &resultpng);
+    error = ZopfliPNGOptimize(origpng, png_options,
+                              png_options.verbose, &resultpng);
 
     if (error) {
-      printf("Decoding error %u: %s\n", error, lodepng_error_text(error));
+      if (error == 1) {
+        printf("Decoding error\n");
+      } else {
+        printf("Decoding error %u: %s\n", error, lodepng_error_text(error));
+      }
     }
 
     // Verify result, check that the result causes no decoding errors
@@ -298,7 +303,6 @@ int main(int argc, char *argv[]) {
     }
 
     if (error) {
-      printf("There was an error\n");
       total_errors++;
     } else {
       size_t origsize = GetFileSize(files[i]);

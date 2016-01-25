@@ -1,7 +1,7 @@
 /*
 LodePNG Utils
 
-Copyright (c) 2005-2012 Lode Vandevenne
+Copyright (c) 2005-2014 Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -41,7 +41,7 @@ unsigned getChunkInfo(std::vector<std::string>& names, std::vector<size_t>& size
                       const std::vector<unsigned char>& png)
 {
   // Listing chunks is based on the original file, not the decoded png info.
-  const unsigned char *chunk, *begin, *end;
+  const unsigned char *chunk, *begin, *end, *next;
   end = &png.back() + 1;
   begin = chunk = &png.front() + 8;
 
@@ -51,10 +51,14 @@ unsigned getChunkInfo(std::vector<std::string>& names, std::vector<size_t>& size
     lodepng_chunk_type(type, chunk);
     if(std::string(type).size() != 4) return 1;
 
+    unsigned length = lodepng_chunk_length(chunk);
+    if(chunk + length + 12 > end) return 1;
     names.push_back(type);
-    sizes.push_back(lodepng_chunk_length(chunk));
+    sizes.push_back(length);
 
-    chunk = lodepng_chunk_next_const(chunk);
+    next = lodepng_chunk_next_const(chunk);
+    if (next <= chunk) return 1; // integer overflow
+    chunk = next;
   }
   return 0;
 }
@@ -77,6 +81,7 @@ unsigned getChunks(std::vector<std::string> names[3],
     if(name.size() != 4) return 1;
 
     next = lodepng_chunk_next_const(chunk);
+    if (next <= chunk) return 1; // integer overflow
 
     if(name == "IHDR")
     {
@@ -109,9 +114,9 @@ unsigned insertChunks(std::vector<unsigned char>& png,
   end = &png.back() + 1;
   begin = chunk = &png.front() + 8;
 
-  size_t l0 = 0; //location 0: IHDR-l0-PLTE (or IHDR-l0-l1-IDAT)
-  size_t l1 = 0; //location 1: PLTE-l1-IDAT (or IHDR-l0-l1-IDAT)
-  size_t l2 = 0; //location 2: IDAT-l2-IEND
+  long l0 = 0; //location 0: IHDR-l0-PLTE (or IHDR-l0-l1-IDAT)
+  long l1 = 0; //location 1: PLTE-l1-IDAT (or IHDR-l0-l1-IDAT)
+  long l2 = 0; //location 2: IDAT-l2-IEND
 
   while(chunk + 8 < end && chunk >= begin)
   {
@@ -121,6 +126,7 @@ unsigned insertChunks(std::vector<unsigned char>& png,
     if(name.size() != 4) return 1;
 
     next = lodepng_chunk_next_const(chunk);
+    if (next <= chunk) return 1; // integer overflow
 
     if(name == "PLTE")
     {
@@ -164,7 +170,7 @@ unsigned getFilterTypesInterlaced(std::vector<std::vector<unsigned char> >& filt
   if(error) return 1;
 
   //Read literal data from all IDAT chunks
-  const unsigned char *chunk, *begin, *end;
+  const unsigned char *chunk, *begin, *end, *next;
   end = &png.back() + 1;
   begin = chunk = &png.front() + 8;
 
@@ -180,6 +186,10 @@ unsigned getFilterTypesInterlaced(std::vector<std::vector<unsigned char> >& filt
     {
       const unsigned char* cdata = lodepng_chunk_data_const(chunk);
       unsigned clength = lodepng_chunk_length(chunk);
+      if(chunk + clength + 12 > end || clength > png.size() || chunk + clength + 12 < begin) {
+        // corrupt chunk length
+        return 1;
+      }
 
       for(unsigned i = 0; i < clength; i++)
       {
@@ -187,7 +197,9 @@ unsigned getFilterTypesInterlaced(std::vector<std::vector<unsigned char> >& filt
       }
     }
 
-    chunk = lodepng_chunk_next_const(chunk);
+    next = lodepng_chunk_next_const(chunk);
+    if (next <= chunk) return 1; // integer overflow
+    chunk = next;
   }
 
   //Decompress all IDAT data
@@ -217,11 +229,12 @@ unsigned getFilterTypesInterlaced(std::vector<std::vector<unsigned char> >& filt
     static const unsigned ADAM7_DX[7] = { 8, 8, 4, 4, 2, 2, 1 }; /*x delta values*/
     static const unsigned ADAM7_DY[7] = { 8, 8, 8, 4, 4, 2, 2 }; /*y delta values*/
     size_t pos = 0;
-    for(int j = 0; j < 7; j++)
+    for(size_t j = 0; j < 7; j++)
     {
       unsigned w2 = (w - ADAM7_IX[j] + ADAM7_DX[j] - 1) / ADAM7_DX[j];
       unsigned h2 = (h - ADAM7_IY[j] + ADAM7_DY[j] - 1) / ADAM7_DY[j];
-      if(ADAM7_IX[j] >= w || ADAM7_IY[j] >= h) w2 = h2 = 0;
+      if(ADAM7_IX[j] >= w) w2 = 0;
+      if(ADAM7_IY[j] >= h) h2 = 0;
       size_t linebytes = 1 + lodepng_get_raw_size(w2, 1, &state.info_png.color);
       for(size_t i = 0; i < h2; i++)
       {
@@ -287,9 +300,8 @@ static const unsigned long CLCL[19] =
 struct ExtractZlib // Zlib decompression and information extraction
 {
   std::vector<ZlibBlockInfo>* zlibinfo;
+  ExtractZlib(std::vector<ZlibBlockInfo>* info) : zlibinfo(info) {};
   int error;
-
-  ExtractZlib(std::vector<ZlibBlockInfo>* output) : zlibinfo(output) {};
 
   unsigned long readBitFromStream(size_t& bitp, const unsigned char* bits)
   {
@@ -391,14 +403,14 @@ struct ExtractZlib // Zlib decompression and information extraction
 
   //the code tree for Huffman codes, dist codes, and code length codes
   HuffmanTree codetree, codetreeD, codelengthcodetree;
-  unsigned long huffmanDecodeSymbol(const unsigned char* in, size_t& bp, const HuffmanTree& codetree, size_t inlength)
+  unsigned long huffmanDecodeSymbol(const unsigned char* in, size_t& bp, const HuffmanTree& tree, size_t inlength)
   {
     //decode a single symbol from given list of bits with given code tree. return value is the symbol
     bool decoded; unsigned long ct;
     for(size_t treepos = 0;;)
     {
       if((bp & 0x07) == 0 && (bp >> 3) > inlength) { error = 10; return 0; } //error: end reached without endcode
-      error = codetree.decode(decoded, ct, treepos, readBitFromStream(bp, in));
+      error = tree.decode(decoded, ct, treepos, readBitFromStream(bp, in));
       if(error) return 0; //stop, an error happened
       if(decoded) return ct;
     }
@@ -472,9 +484,9 @@ struct ExtractZlib // Zlib decompression and information extraction
     if(error) return;
     zlibinfo->back().treebits = bp - bpstart;
     //lit/len/end symbol lengths
-    for(size_t i = 0; i < bitlen.size(); i++) zlibinfo->back().litlenlengths.push_back(bitlen[i]);
+    for(size_t j = 0; j < bitlen.size(); j++) zlibinfo->back().litlenlengths.push_back(bitlen[j]);
     //dist lengths
-    for(size_t i = 0; i < bitlenD.size(); i++) zlibinfo->back().distlengths.push_back(bitlenD[i]);
+    for(size_t j = 0; j < bitlenD.size(); j++) zlibinfo->back().distlengths.push_back(bitlenD[j]);
   }
 
   void inflateHuffmanBlock(std::vector<unsigned char>& out,
@@ -536,7 +548,7 @@ struct ExtractZlib // Zlib decompression and information extraction
     while((bp & 0x7) != 0) bp++; //go to first boundary of byte
     size_t p = bp / 8;
     if(p >= inlength - 4) { error = 52; return; } //error, bit pointer will jump past memory
-    unsigned long LEN = in[p] + 256 * in[p + 1], NLEN = in[p + 2] + 256 * in[p + 3]; p += 4;
+    unsigned long LEN = in[p] + 256u * in[p + 1], NLEN = in[p + 2] + 256u * in[p + 3]; p += 4;
     if(LEN + NLEN != 65535) { error = 21; return; } //error: NLEN is not one's complement of LEN
     if(p + LEN > inlength) { error = 23; return; } //error: reading outside of in buffer
     for(unsigned long n = 0; n < LEN; n++)
@@ -565,10 +577,8 @@ struct ExtractZlib // Zlib decompression and information extraction
 struct ExtractPNG //PNG decoding and information extraction
 {
   std::vector<ZlibBlockInfo>* zlibinfo;
+  ExtractPNG(std::vector<ZlibBlockInfo>* info) : zlibinfo(info) {};
   int error;
-
-  ExtractPNG(std::vector<ZlibBlockInfo>* output) : zlibinfo(output) {};
-
   void decode(const unsigned char* in, size_t size)
   {
     error = 0;
@@ -641,7 +651,7 @@ struct ExtractPNG //PNG decoding and information extraction
 
   unsigned long read32bitInt(const unsigned char* buffer)
   {
-    return (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
+    return (unsigned int)((buffer[0] << 24u) | (buffer[1] << 16u) | (buffer[2] << 8u) | buffer[3]);
   }
 };
 
