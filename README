@@ -12,11 +12,11 @@ deflate.h, ZopfliZlibCompress in zlib_container.h or ZopfliGzipCompress in
 gzip_container.h.
 
 ZopfliDeflate creates a valid deflate stream in memory, see:
-http://www.ietf.org/rfc/rfc1951.txt
+https://tools.ietf.org/html/rfc1951
 ZopfliZlibCompress creates a valid zlib stream in memory, see:
-http://www.ietf.org/rfc/rfc1950.txt
+https://tools.ietf.org/html/rfc1950
 ZopfliGzipCompress creates a valid gzip stream in memory, see:
-http://www.ietf.org/rfc/rfc1952.txt
+https://tools.ietf.org/html/rfc1952
 
 This library can only compress, not decompress. Existing zlib or deflate
 libraries can decompress the data.
