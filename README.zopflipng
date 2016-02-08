@@ -12,8 +12,15 @@ ZopfliPNG is a command line program to optimize the Portable Network Graphics
 This is an alpha-release for testing while improvements, particularly to add
 palette selection, are still being made. Feedback and bug reports are welcome.
 
-To build ZopfliPNG, use "make zopflipng", or compile all the sources except
-zopfli_bin.c.
+Build instructions:
+
+To build ZopfliPNG, compile all .c, .cc and .cpp files from src/zopfli,
+src/zopflipng and src/zopflipng/lodepng, except src/zopfli/zopfli_bin.c, to a
+single binary with C++, e.g.:
+g++ src/zopfli/{blocksplitter,cache,deflate,gzip_container,hash,katajainen,lz77,squeeze,tree,util,zlib_container,zopfli_lib}.c src/zopflipng/*.cc src/zopflipng/lodepng/*.cpp -O2 -W -Wall -Wextra -ansi -pedantic -o zopflipng
+
+A makefile is provided as well, but only for linux. Use "make zopflipng" to
+build the For other platforms, please use the build instructions above instead.
 
 The main compression algorithm in ZopfliPNG is ported from WebP lossless, but
 naturally cannot give as much compression gain for PNGs as it does for a more
