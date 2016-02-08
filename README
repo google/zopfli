@@ -25,10 +25,7 @@ zopfli_bin.c is separate from the library and contains an example program to
 create very well compressed gzip files. Currently the makefile builds this
 program with the library statically linked in.
 
-To build the binary, use "make". To build the library as a shared Linux library,
-use "make libzopfli". The source code of Zopfli is under src/zopfli.
-
-Build instructions:
+The source code of Zopfli is under src/zopfli. Build instructions:
 
 To build zopfli, compile all .c source files under src/zopfli to a single binary
 with C, and link to the standard C math library, e.g.:
