@@ -28,5 +28,15 @@ program with the library statically linked in.
 To build the binary, use "make". To build the library as a shared Linux library,
 use "make libzopfli". The source code of Zopfli is under src/zopfli.
 
+Build instructions:
+
+To build zopfli, compile all .c source files under src/zopfli to a single binary
+with C, and link to the standard C math library, e.g.:
+gcc src/zopfli/*.c -O2 -W -Wall -Wextra -ansi -pedantic -lm -o zopfli
+
+A makefile is provided as well, but only for linux. Use "make" to build the
+binary, "make libzopfli" to build it as a shared library. For other platforms,
+please use the build instructions above instead.
+
 Zopfli Compression Algorithm was created by Lode Vandevenne and Jyrki
 Alakuijala, based on an algorithm by Jyrki Alakuijala.
