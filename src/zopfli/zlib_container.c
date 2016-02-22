@@ -53,7 +53,7 @@ void ZopfliZlibCompress(const ZopfliOptions* options,
   unsigned char bitpointer = 0;
   unsigned checksum = adler32(in, (unsigned)insize);
   unsigned cmf = 120;  /* CM 8, CINFO 7. See zlib spec.*/
-  unsigned flevel = 0;
+  unsigned flevel = 3;
   unsigned fdict = 0;
   unsigned cmfflg = 256 * cmf + fdict * 32 + flevel * 64;
   unsigned fcheck = 31 - cmfflg % 31;
