@@ -55,9 +55,9 @@ operating on huge files without exceeding memory, such as the 1GB wiki9 corpus.
 The whole compression algorithm, including the smarter block splitting, will
 be executed independently on each huge block.
 Dividing into huge blocks hurts compression, but not much relative to the size.
-Set this to, for example, 20MB (20000000). Set it to 0 to disable master blocks.
+Set it to 0 to disable master blocks.
 */
-#define ZOPFLI_MASTER_BLOCK_SIZE 20000000
+#define ZOPFLI_MASTER_BLOCK_SIZE 1000000
 
 /*
 Used to initialize costs for example
