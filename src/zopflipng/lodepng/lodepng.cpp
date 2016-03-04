@@ -32,6 +32,10 @@ Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #ifdef LODEPNG_COMPILE_CPP
 #include <fstream>
@@ -352,28 +356,33 @@ static void lodepng_add32bitInt(ucvector* buffer, unsigned value)
 
 unsigned lodepng_load_file(unsigned char** out, size_t* outsize, const char* filename)
 {
-  FILE* file;
-  long size;
+  off_t size;
+  struct stat stbuf;
+  int fd;
 
-  /*provide some proper output values if error will happen*/
-  *out = 0;
-  *outsize = 0;
+  fd = open(filename, O_RDONLY);
+  if (fd == -1) {
+    return 78;
+  }
 
-  file = fopen(filename, "rb");
-  if(!file) return 78;
+  if ((fstat(fd, &stbuf) != 0) || (!S_ISREG(stbuf.st_mode))) {
+    close(fd);
+    return 78;
+  }
 
-  /*get filesize:*/
-  fseek(file , 0 , SEEK_END);
-  size = ftell(file);
-  rewind(file);
+  size = stbuf.st_size;
+
+  *out = (unsigned char*)lodepng_malloc((size_t)size);
+  if(!(*out) && size) {
+    close(fd);
+    return 83; /*the above malloc failed*/
+  }
 
   /*read contents of the file into the vector*/
   *outsize = 0;
-  *out = (unsigned char*)lodepng_malloc((size_t)size);
-  if(size && (*out)) (*outsize) = fread(*out, 1, (size_t)size, file);
+  *outsize = read(fd, *out, (size_t)size);
 
-  fclose(file);
-  if(!(*out) && size) return 83; /*the above malloc failed*/
+  close(fd);
   return 0;
 }
 
