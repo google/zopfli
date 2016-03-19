@@ -172,9 +172,27 @@ static void ExtractBitLengths(Node* chain, Node* leaves, unsigned* bitlengths) {
 
 /*
 Comparator for sorting the leaves. Has the function signature for qsort.
+Mr_KrzYch00's Fix:
+Make sure we don't get inconsitency between compilers by telling qsort
+on how to handle sorting order of counts when weights are equal.
+When counts were not checked GCC 5.3 was reversing the order of
+counts when weights were equal, making block split points and dynamic
+block iteration progression different.
 */
 static int LeafComparator(const void* a, const void* b) {
-  return ((const Node*)a)->weight - ((const Node*)b)->weight;
+  const Node *aa = ((const Node*)a);
+  const Node *bb = ((const Node*)b);
+  if(aa->weight < bb->weight)
+   return -1;
+  else if(aa->weight > bb->weight)
+   return 1;
+  else if(aa->count < bb->count)
+   return -1;
+  else if(aa->count > bb->count)
+   return 1;
+  else
+   return 0;
+}
 }
 
 int ZopfliLengthLimitedCodeLengths(
