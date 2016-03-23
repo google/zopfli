@@ -21,6 +21,7 @@
 #include <stdio.h>
 
 #include "lodepng/lodepng.h"
+#include "lodepng/lodepng_util.h"
 #include "zopflipng_lib.h"
 
 // Returns directory path (including last slash) in dir, filename without
@@ -118,9 +119,12 @@ void ShowHelp() {
          " set of filters to try is --filters=0me.\n"
          "--keepchunks=nAME,nAME,...: keep metadata chunks with these names"
          " that would normally be removed, e.g. tEXt,zTXt,iTXt,gAMA, ... \n"
-         " Due to adding extra data, this increases the result size. By default"
-         " ZopfliPNG only keeps the following chunks because they are"
-         " essential: IHDR, PLTE, tRNS, IDAT and IEND.\n"
+         " Due to adding extra data, this increases the result size. Keeping"
+         " bKGD or sBIT chunks may cause additional worse compression due to"
+         " forcing a certain color type, it is advised to not keep these for"
+         " web images because web browsers do not use these chunks. By default"
+         " ZopfliPNG only keeps (and losslessly modifies) the following chunks"
+         " because they are essential: IHDR, PLTE, tRNS, IDAT and IEND.\n"
          "\n"
          "Usage examples:\n"
          "Optimize a file and overwrite if smaller: zopflipng infile.png"
@@ -311,7 +315,9 @@ int main(int argc, char *argv[]) {
     // Verify result, check that the result causes no decoding errors
     if (!error) {
       error = lodepng::decode(image, w, h, inputstate, resultpng);
-      if (error) printf("Error: verification of result failed.\n");
+      if (error) {
+        printf("Error: verification of result failed. Error: %u.\n", error);
+      }
     }
 
     if (error) {
@@ -319,6 +325,20 @@ int main(int argc, char *argv[]) {
     } else {
       size_t origsize = origpng.size();
       size_t resultsize = resultpng.size();
+
+      if (!png_options.keepchunks.empty()) {
+        std::vector<std::string> names;
+        std::vector<size_t> sizes;
+        lodepng::getChunkInfo(names, sizes, resultpng);
+        for (size_t i = 0; i < names.size(); i++) {
+          if (names[i] == "bKGD" || names[i] == "sBIT") {
+            printf("Forced to keep original color type due to keeping bKGD or"
+                   " sBIT chunk. Try without --keepchunks for better"
+                   " compression.\n");
+            break;
+          }
+        }
+      }
 
       PrintSize("Input size", origsize);
       PrintResultSize("Result size", origsize, resultsize);
