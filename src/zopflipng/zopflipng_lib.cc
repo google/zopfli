@@ -379,18 +379,23 @@ int ZopfliPNGOptimize(const std::vector<unsigned char>& origpng,
   lodepng::State inputstate;
   error = lodepng::decode(image, w, h, inputstate, origpng);
 
-  // If the user wants to keep the non-essential chunks bKGD or sBIT, the input
-  // color type has to be kept since the chunks format depend on it. This may
-  // severely hurt compression if it is not an ideal color type. Ideally these
-  // chunks should not be kept for web images. Handling of bKGD chunks could be
-  // improved by changing its color type but not done yet due to its additional
-  // complexity, for sBIT such improvement is usually not possible.
-  std::set<std::string> keepchunks;
-  ChunksToKeep(origpng, png_options.keepchunks, &keepchunks);
-  bool keep_colortype = keepchunks.count("bKGD") || keepchunks.count("sBIT");
-  if (keep_colortype && verbose) {
-    printf("Forced to keep original color type due to keeping bKGD or sBIT"
-           " chunk.\n");
+  bool keep_colortype = false;
+
+  if (!png_options.keepchunks.empty()) {
+    // If the user wants to keep the non-essential chunks bKGD or sBIT, the
+    // input color type has to be kept since the chunks format depend on it.
+    // This may severely hurt compression if it is not an ideal color type.
+    // Ideally these chunks should not be kept for web images. Handling of bKGD
+    // chunks could be improved by changing its color type but not done yet due
+    // to its additional complexity, for sBIT such improvement is usually not
+    // possible.
+    std::set<std::string> keepchunks;
+    ChunksToKeep(origpng, png_options.keepchunks, &keepchunks);
+    keep_colortype = keepchunks.count("bKGD") || keepchunks.count("sBIT");
+    if (keep_colortype && verbose) {
+      printf("Forced to keep original color type due to keeping bKGD or sBIT"
+             " chunk.\n");
+    }
   }
 
   if (error) {
