@@ -19,8 +19,9 @@ src/zopflipng and src/zopflipng/lodepng, except src/zopfli/zopfli_bin.c, to a
 single binary with C++, e.g.:
 g++ src/zopfli/{blocksplitter,cache,deflate,gzip_container,hash,katajainen,lz77,squeeze,tree,util,zlib_container,zopfli_lib}.c src/zopflipng/*.cc src/zopflipng/lodepng/*.cpp -O2 -W -Wall -Wextra -ansi -pedantic -o zopflipng
 
-A makefile is provided as well, but only for linux. Use "make zopflipng" to
-build the For other platforms, please use the build instructions above instead.
+A makefile is provided as well, but only for linux: use "make zopflipng" with
+the Zopfli makefile. For other platforms, please use the build instructions
+above instead.
 
 The main compression algorithm in ZopfliPNG is ported from WebP lossless, but
 naturally cannot give as much compression gain for PNGs as it does for a more
