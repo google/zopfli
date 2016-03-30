@@ -95,8 +95,13 @@ unsigned getChunks(std::vector<std::string> names[3],
     {
       location = 2;
     }
-    else if(name != "IEND")
+    else if(name == "IEND")
     {
+      break; // anything after IEND is not part of the PNG or the 3 groups here.
+    }
+    else
+    {
+      if(next > end) return 1; // invalid chunk, content too far
       names[location].push_back(name);
       chunks[location].push_back(std::vector<unsigned char>(chunk, next));
     }
