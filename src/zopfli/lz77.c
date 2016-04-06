@@ -542,7 +542,7 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
 
 void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
                       size_t instart, size_t inend,
-                      ZopfliLZ77Store* store) {
+                      ZopfliLZ77Store* store, ZopfliHash* h) {
   size_t i = 0, j;
   unsigned short leng;
   unsigned short dist;
@@ -550,9 +550,6 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
   size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
       ? instart - ZOPFLI_WINDOW_SIZE : 0;
   unsigned short dummysublen[259];
-
-  ZopfliHash hash;
-  ZopfliHash* h = &hash;
 
 #ifdef ZOPFLI_LAZY_MATCHING
   /* Lazy matching. */
@@ -564,7 +561,7 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
 
   if (instart == inend) return;
 
-  ZopfliInitHash(ZOPFLI_WINDOW_SIZE, h);
+  ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h);
   ZopfliWarmupHash(in, windowstart, inend, h);
   for (i = windowstart; i < instart; i++) {
     ZopfliUpdateHash(in, i, inend, h);
@@ -629,6 +626,4 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
       ZopfliUpdateHash(in, i, inend, h);
     }
   }
-
-  ZopfliCleanHash(h);
 }

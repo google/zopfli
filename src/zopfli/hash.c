@@ -26,13 +26,26 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #define HASH_SHIFT 5
 #define HASH_MASK 32767
 
-void ZopfliInitHash(size_t window_size, ZopfliHash* h) {
-  size_t i;
-
-  h->val = 0;
+void ZopfliAllocHash(size_t window_size, ZopfliHash* h) {
   h->head = (int*)malloc(sizeof(*h->head) * 65536);
   h->prev = (unsigned short*)malloc(sizeof(*h->prev) * window_size);
   h->hashval = (int*)malloc(sizeof(*h->hashval) * window_size);
+
+#ifdef ZOPFLI_HASH_SAME
+  h->same = (unsigned short*)malloc(sizeof(*h->same) * window_size);
+#endif
+
+#ifdef ZOPFLI_HASH_SAME_HASH
+  h->head2 = (int*)malloc(sizeof(*h->head2) * 65536);
+  h->prev2 = (unsigned short*)malloc(sizeof(*h->prev2) * window_size);
+  h->hashval2 = (int*)malloc(sizeof(*h->hashval2) * window_size);
+#endif
+}
+
+void ZopfliResetHash(size_t window_size, ZopfliHash* h) {
+  size_t i;
+
+  h->val = 0;
   for (i = 0; i < 65536; i++) {
     h->head[i] = -1;  /* -1 indicates no head so far. */
   }
@@ -42,7 +55,6 @@ void ZopfliInitHash(size_t window_size, ZopfliHash* h) {
   }
 
 #ifdef ZOPFLI_HASH_SAME
-  h->same = (unsigned short*)malloc(sizeof(*h->same) * window_size);
   for (i = 0; i < window_size; i++) {
     h->same[i] = 0;
   }
@@ -50,9 +62,6 @@ void ZopfliInitHash(size_t window_size, ZopfliHash* h) {
 
 #ifdef ZOPFLI_HASH_SAME_HASH
   h->val2 = 0;
-  h->head2 = (int*)malloc(sizeof(*h->head2) * 65536);
-  h->prev2 = (unsigned short*)malloc(sizeof(*h->prev2) * window_size);
-  h->hashval2 = (int*)malloc(sizeof(*h->hashval2) * window_size);
   for (i = 0; i < 65536; i++) {
     h->head2[i] = -1;
   }
