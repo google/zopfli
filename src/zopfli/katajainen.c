@@ -172,12 +172,10 @@ static void ExtractBitLengths(Node* chain, Node* leaves, unsigned* bitlengths) {
 
 /*
 Comparator for sorting the leaves. Has the function signature for qsort.
-Mr_KrzYch00's Fix:
-Make sure we don't get inconsitency between compilers by telling qsort
-on how to handle sorting order of counts when weights are equal.
-When counts were not checked GCC 5.3 was reversing the order of
-counts when weights were equal, making block split points and dynamic
-block iteration progression different.
+Qsort requires both weights and counts sorting order to be defined here
+as weights tend to be equal and without counts sorting defined qsort
+inconsistency could occur among compilers, that in turn would impact block
+splitter and compression.
 */
 static int LeafComparator(const void* a, const void* b) {
   const Node *aa = ((const Node*)a);
