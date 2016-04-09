@@ -33,6 +33,11 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 /* __builtin_clz available beginning with GCC 3.4 */
 #elif __GNUC__ * 100 + __GNUC_MINOR__ >= 304
 # define HAS_BUILTIN_CLZ
+/* __lzcnt available beginning with Visual Studio 2008 */
+#elif _MSC_VER >= 1500
+# include <intrin.h> 
+# define __builtin_clz __lzcnt
+# define HAS_BUILTIN_CLZ
 #endif
 
 int ZopfliGetDistExtraBits(int dist) {
