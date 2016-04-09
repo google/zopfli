@@ -32,6 +32,15 @@ Utilities for using the lz77 symbols of the deflate spec.
 /* __builtin_clz available beginning with GCC 3.4 */
 #elif __GNUC__ * 100 + __GNUC_MINOR__ >= 304
 # define ZOPFLI_HAS_BUILTIN_CLZ
+/* _BitScanReverse available beginning with Visual Studio 2005 */
+#elif _MSC_VER >= 1400
+# include <intrin.h>
+# define ZOPFLI_HAS_BUILTIN_CLZ
+static int __inline __builtin_clz(unsigned int x) {
+  unsigned long r;
+  _BitScanReverse(&r, x);
+  return 31 ^ r;
+}
 #endif
 
 /* Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec. */
