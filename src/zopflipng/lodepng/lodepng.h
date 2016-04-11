@@ -1,5 +1,5 @@
 /*
-LodePNG version 20160124
+LodePNG version 20160409
 
 Copyright (c) 2005-2016 Lode Vandevenne
 
@@ -1597,6 +1597,7 @@ state.info_png.color.bitdepth: desired bit depth if auto_convert is false
 state.info_png.color....: more color settings, see struct LodePNGColorMode
 state.info_png....: more PNG related settings, see struct LodePNGInfo
 
+
 12. changes
 -----------
 
@@ -1606,6 +1607,8 @@ yyyymmdd.
 Some changes aren't backwards compatible. Those are indicated with a (!)
 symbol.
 
+*) 09 apr 2016: Fixed colorkey usage detection, and better file loading (within
+   the limits of pure C90).
 *) 08 dec 2015: Made load_file function return error if file can't be opened.
 *) 24 okt 2015: Bugfix with decoding to palette output.
 *) 18 apr 2015: Boundary PM instead of just package-merge for faster encoding.

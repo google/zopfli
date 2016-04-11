@@ -314,9 +314,36 @@ int main(int argc, char *argv[]) {
 
     // Verify result, check that the result causes no decoding errors
     if (!error) {
-      error = lodepng::decode(image, w, h, inputstate, resultpng);
+      error = lodepng::decode(image, w, h, resultpng);
+      if (!error) {
+        std::vector<unsigned char> origimage;
+        unsigned origw, origh;
+        lodepng::decode(origimage, origw, origh, origpng);
+        if (origw != w || origh != h || origimage.size() != image.size()) {
+          error = 1;
+        } else {
+          for (size_t i = 0; i < image.size(); i += 4) {
+            bool same_alpha = image[i + 3] == origimage[i + 3];
+            bool same_rgb =
+                (png_options.lossy_transparent && image[i + 3] == 0) ||
+                (image[i + 0] == origimage[i + 0] &&
+                 image[i + 1] == origimage[i + 1] &&
+                 image[i + 2] == origimage[i + 2]);
+            if (!same_alpha || !same_rgb) {
+              error = 1;
+              break;
+            }
+          }
+        }
+      }
       if (error) {
-        printf("Error: verification of result failed. Error: %u.\n", error);
+        printf("Error: verification of result failed, keeping original."
+               " Error: %u.\n", error);
+        // Reset the error to 0, instead set output back to the original. The
+        // input PNG is valid, zopfli failed on it so treat as if it could not
+        // make it smaller.
+        error = 0;
+        resultpng = origpng;
       }
     }
 
