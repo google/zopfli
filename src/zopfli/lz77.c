@@ -269,10 +269,10 @@ static int GetLengthScore(int length, int distance) {
   return distance > 1024 ? length - 1 : length;
 }
 
+#ifndef NDEBUG
 void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
                          unsigned short dist, unsigned short length) {
 
-  /* TODO(lode): make this only run in a debug compile, it's for assert only. */
   size_t i;
 
   assert(pos + length <= datasize);
@@ -283,6 +283,7 @@ void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
     }
   }
 }
+#endif
 
 /*
 Finds how long the match of scan and match is. Can be used to find how many
@@ -422,7 +423,9 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
 
   int* hhead = h->head;
   unsigned short* hprev = h->prev;
+#ifndef NDEBUG
   int* hhashval = h->hashval;
+#endif
   int hval = h->val;
 
 #ifdef ZOPFLI_LONGEST_MATCH_CACHE
@@ -512,7 +515,9 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
       /* Now use the hash that encodes the length and first byte. */
       hhead = h->head2;
       hprev = h->prev2;
+#ifndef NDEBUG
       hhashval = h->hashval2;
+#endif
       hval = h->val2;
     }
 #endif
@@ -596,7 +601,9 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
         dist = prev_match;
         lengthscore = prevlengthscore;
         /* Add to output. */
+#ifndef NDEBUG
         ZopfliVerifyLenDist(in, inend, i - 1, dist, leng);
+#endif
         ZopfliStoreLitLenDist(leng, dist, i - 1, store);
         for (j = 2; j < leng; j++) {
           assert(i < inend);
@@ -617,7 +624,9 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
 
     /* Add to output. */
     if (lengthscore >= ZOPFLI_MIN_MATCH) {
+#ifndef NDEBUG
       ZopfliVerifyLenDist(in, inend, i, dist, leng);
+#endif
       ZopfliStoreLitLenDist(leng, dist, i, store);
     } else {
       leng = 1;
