@@ -1,8 +1,8 @@
 CC = gcc
 CXX = g++
 
-CFLAGS = -W -Wall -Wextra -ansi -pedantic -lm -O2
-CXXFLAGS = -W -Wall -Wextra -ansi -pedantic -O2
+override CFLAGS := -W -Wall -Wextra -ansi -pedantic -lm -O2 $(CFLAGS)
+override CXXFLAGS := -W -Wall -Wextra -ansi -pedantic -O2 $(CXXFLAGS)
 
 ZOPFLILIB_SRC = src/zopfli/blocksplitter.c src/zopfli/cache.c\
                 src/zopfli/deflate.c src/zopfli/gzip_container.c\
