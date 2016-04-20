@@ -130,7 +130,7 @@ static double GetCostFixed(unsigned litlen, unsigned dist, void* unused) {
     int dbits = ZopfliGetDistExtraBits(dist);
     int lbits = ZopfliGetLengthExtraBits(litlen);
     int lsym = ZopfliGetLengthSymbol(litlen);
-    double cost = 0;
+    int cost = 0;
     if (lsym <= 279) cost += 7;
     else cost += 8;
     cost += 5;  /* Every dist symbol has length 5. */
@@ -151,7 +151,7 @@ static double GetCostStat(unsigned litlen, unsigned dist, void* context) {
     int lbits = ZopfliGetLengthExtraBits(litlen);
     int dsym = ZopfliGetDistSymbol(dist);
     int dbits = ZopfliGetDistExtraBits(dist);
-    return stats->ll_symbols[lsym] + lbits + stats->d_symbols[dsym] + dbits;
+    return lbits + dbits + stats->ll_symbols[lsym] + stats->d_symbols[dsym];
   }
 }
 
@@ -196,6 +196,11 @@ static double GetCostModelMinCost(CostModelFun* costmodel, void* costcontext) {
   return costmodel(bestlength, bestdist, costcontext);
 }
 
+static size_t min(size_t a, size_t b)
+{
+	return a < b ? a : b;
+}
+
 /*
 Performs the forward pass for "squeeze". Gets the most optimal length to reach
 every byte from a previous byte, using cost calculations.
@@ -217,7 +222,7 @@ static double GetBestLengths(ZopfliBlockState *s,
   /* Best cost to get here so far. */
   size_t blocksize = inend - instart;
   float* costs;
-  size_t i = 0, k;
+  size_t i = 0, k, kend;
   unsigned short leng;
   unsigned short dist;
   unsigned short sublen[259];
@@ -227,6 +232,7 @@ static double GetBestLengths(ZopfliBlockState *s,
   ZopfliHash* h = &hash;
   double result;
   double mincost = GetCostModelMinCost(costmodel, costcontext);
+  double mincostaddcostj;
 
   if (instart == inend) return 0;
 
@@ -274,7 +280,7 @@ static double GetBestLengths(ZopfliBlockState *s,
 
     /* Literal. */
     if (i + 1 <= inend) {
-      double newCost = costs[j] + costmodel(in[i], 0, costcontext);
+      double newCost = costmodel(in[i], 0, costcontext) + costs[j];
       assert(newCost >= 0);
       if (newCost < costs[j + 1]) {
         costs[j + 1] = newCost;
@@ -282,14 +288,16 @@ static double GetBestLengths(ZopfliBlockState *s,
       }
     }
     /* Lengths. */
-    for (k = 3; k <= leng && i + k <= inend; k++) {
+    kend = min(leng, inend-i);
+    mincostaddcostj = mincost + costs[j];
+    for (k = 3; k <= kend; k++) {
       double newCost;
 
       /* Calling the cost model is expensive, avoid this if we are already at
       the minimum possible cost that it can return. */
-     if (costs[j + k] - costs[j] <= mincost) continue;
+     if (costs[j + k] <= mincostaddcostj) continue;
 
-      newCost = costs[j] + costmodel(k, sublen[k], costcontext);
+      newCost = costmodel(k, sublen[k], costcontext) + costs[j];
       assert(newCost >= 0);
       if (newCost < costs[j + k]) {
         assert(k <= ZOPFLI_MAX_MATCH);
