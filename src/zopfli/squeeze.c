@@ -196,8 +196,7 @@ static double GetCostModelMinCost(CostModelFun* costmodel, void* costcontext) {
   return costmodel(bestlength, bestdist, costcontext);
 }
 
-static size_t min(size_t a, size_t b)
-{
+static size_t min(size_t a, size_t b) {
   return a < b ? a : b;
 }
 
