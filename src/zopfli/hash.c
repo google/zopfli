@@ -46,28 +46,22 @@ void ZopfliResetHash(size_t window_size, ZopfliHash* h) {
   size_t i;
 
   h->val = 0;
-  for (i = 0; i < 65536; i++) {
-    h->head[i] = -1;  /* -1 indicates no head so far. */
-  }
-  for (i = 0; i < window_size; i++) {
-    h->prev[i] = i;  /* If prev[j] == j, then prev[j] is uninitialized. */
-    h->hashval[i] = -1;
+  memset(h->head, -1, sizeof(*h->head) * 65536);
+  memset(h->hashval, -1, sizeof(*h->hashval) * window_size);
+  for (i = 0; i < window_size; ++i) {
+    h->prev[i] = i;
   }
 
 #ifdef ZOPFLI_HASH_SAME
-  for (i = 0; i < window_size; i++) {
-    h->same[i] = 0;
-  }
+  memset(h->same, 0, sizeof(*h->same) * window_size);
 #endif
 
 #ifdef ZOPFLI_HASH_SAME_HASH
   h->val2 = 0;
-  for (i = 0; i < 65536; i++) {
-    h->head2[i] = -1;
-  }
-  for (i = 0; i < window_size; i++) {
+  memset(h->head2, -1, sizeof(*h->head2) * 65536);
+  memset(h->hashval2, -1, sizeof(*h->hashval2) * window_size);
+  for (i = 0; i < window_size; ++i) {
     h->prev2[i] = i;
-    h->hashval2[i] = -1;
   }
 #endif
 }
