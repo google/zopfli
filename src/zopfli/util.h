@@ -121,33 +121,6 @@ varies from file to file.
 #define ZOPFLI_LAZY_MATCHING
 
 /*
-Gets the symbol for the given length, cfr. the DEFLATE spec.
-Returns the symbol in the range [257-285] (inclusive)
-*/
-int ZopfliGetLengthSymbol(int l);
-
-/* Gets the amount of extra bits for the given length, cfr. the DEFLATE spec. */
-int ZopfliGetLengthExtraBits(int l);
-
-/* Gets value of the extra bits for the given length, cfr. the DEFLATE spec. */
-int ZopfliGetLengthExtraBitsValue(int l);
-
-/* Gets the symbol for the given dist, cfr. the DEFLATE spec. */
-int ZopfliGetDistSymbol(int dist);
-
-/* Gets the amount of extra bits for the given dist, cfr. the DEFLATE spec. */
-int ZopfliGetDistExtraBits(int dist);
-
-/* Gets value of the extra bits for the given dist, cfr. the DEFLATE spec. */
-int ZopfliGetDistExtraBitsValue(int dist);
-
-/* Gets the amount of extra bits for the given length symbol. */
-int ZopfliGetLengthSymbolExtraBits(int s);
-
-/* Gets the amount of extra bits for the given distance symbol. */
-int ZopfliGetDistSymbolExtraBits(int s);
-
-/*
 Appends value to dynamically allocated memory, doubling its allocation size
 whenever needed.
 

@@ -1,7 +1,7 @@
 CC = gcc
 CXX = g++
 
-CFLAGS = -W -Wall -Wextra -ansi -pedantic -lm -O2
+CFLAGS = -W -Wall -Wextra -ansi -pedantic -lm -O2 -Wno-unused-function
 CXXFLAGS = -W -Wall -Wextra -ansi -pedantic -O2
 
 ZOPFLILIB_SRC = src/zopfli/blocksplitter.c src/zopfli/cache.c\

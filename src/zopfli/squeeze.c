@@ -25,6 +25,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 
 #include "blocksplitter.h"
 #include "deflate.h"
+#include "symbols.h"
 #include "tree.h"
 #include "util.h"
 
@@ -425,7 +426,6 @@ static void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats) {
 /*
 Does a single run for ZopfliLZ77Optimal. For good compression, repeated runs
 with updated statistics should be performed.
-
 s: the block state
 in: the input data array
 instart: where to start

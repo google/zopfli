@@ -26,6 +26,7 @@ Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 #include "katajainen.h"
 #include <assert.h>
 #include <stdlib.h>
+#include <limits.h>
 
 typedef struct Node Node;
 
@@ -220,8 +221,20 @@ int ZopfliLengthLimitedCodeLengths(
     return 0;  /* Only one symbol, give it bitlength 1, not 0. OK. */
   }
 
-  /* Sort the leaves from lightest to heaviest. */
+  /* Sort the leaves from lightest to heaviest. Add count into the same
+  variable for stable sorting. */
+  for (i = 0; i < numsymbols; i++) {
+    if (leaves[i].weight >=
+        ((size_t)1 << (sizeof(leaves[0].weight) * CHAR_BIT - 9))) {
+      free(leaves);
+      return 1;  /* Error, we need 9 bits for the count. */
+    }
+    leaves[i].weight = (leaves[i].weight << 9) | leaves[i].count;
+  }
   qsort(leaves, numsymbols, sizeof(Node), LeafComparator);
+  for (i = 0; i < numsymbols; i++) {
+    leaves[i].weight >>= 9;
+  }
 
   /* Initialize node memory pool. */
   pool.size = 2 * maxbits * (maxbits + 1);
