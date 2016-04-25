@@ -17,7 +17,7 @@ Build instructions:
 To build ZopfliPNG, compile all .c, .cc and .cpp files from src/zopfli,
 src/zopflipng and src/zopflipng/lodepng, except src/zopfli/zopfli_bin.c, to a
 single binary with C++, e.g.:
-g++ src/zopfli/{blocksplitter,cache,deflate,gzip_container,hash,katajainen,lz77,squeeze,tree,util,zlib_container,zopfli_lib}.c src/zopflipng/*.cc src/zopflipng/lodepng/*.cpp -O2 -W -Wall -Wextra -ansi -pedantic -o zopflipng
+g++ src/zopfli/{blocksplitter,cache,deflate,gzip_container,hash,katajainen,lz77,squeeze,tree,util,zlib_container,zopfli_lib}.c src/zopflipng/*.cc src/zopflipng/lodepng/*.cpp -O2 -W -Wall -Wextra -Wno-unused-function -ansi -pedantic -o zopflipng
 
 A makefile is provided as well, but only for linux: use "make zopflipng" with
 the Zopfli makefile. For other platforms, please use the build instructions
