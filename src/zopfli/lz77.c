@@ -463,7 +463,7 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
 
   assert(pp == (pos & ZOPFLI_WINDOW_MASK));
 
-  dist = p < pp ? pp - p : ((ZOPFLI_WINDOW_SIZE - p) + pp);
+  dist = (pp - p) & ZOPFLI_WINDOW_MASK;
 
   /* Go through all distances. */
   while (dist < ZOPFLI_WINDOW_SIZE) {
