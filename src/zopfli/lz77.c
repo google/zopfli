@@ -512,9 +512,8 @@ void ZopfliFindLongestMatch(ZopfliBlockState* s, const ZopfliHash* h,
 
 #ifdef ZOPFLI_HASH_SAME_HASH
     /* Switch to the other hash once this will be more efficient. */
-    if (h->val2 == h->hashval2[p] &&
-        hhead != h->head2 &&
-        bestlength >= same0) {
+    if (hhead != h->head2 && bestlength >= same0 &&
+        h->val2 == h->hashval2[p]) {
       /* Now use the hash that encodes the length and first byte. */
       hhead = h->head2;
       hprev = h->prev2;
