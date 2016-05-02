@@ -12,6 +12,17 @@ ZopfliPNG is a command line program to optimize the Portable Network Graphics
 This is an alpha-release for testing while improvements, particularly to add
 palette selection, are still being made. Feedback and bug reports are welcome.
 
+Important:
+
+This PNG optimizer removes ancillary chunks (pieces of metadata) from the
+PNG image that normally do not affect rendering. However in special
+circumstances you may wish to keep some. For example for a design using
+custom gamma correction, keeping it may be desired. Visually check in the
+target renderer after using ZopfliPNG. Use --keepchunks to keep chunks, e.g.
+--keepchunks=gAMA,pHYs to keep gamma and DPI information. This will increase
+file size. The following page contains a list of ancillary PNG chunks:
+http://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html
+
 Build instructions:
 
 To build ZopfliPNG, compile all .c, .cc and .cpp files from src/zopfli,
