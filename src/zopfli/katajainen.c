@@ -66,7 +66,8 @@ numsymbols: Number of leaves.
 pool: the node memory pool.
 index: The index of the list in which a new chain or leaf is required.
 */
-static void BoundaryPM(Node* (*lists)[2], Node* leaves, int numsymbols, NodePool* pool, int index) {
+static void BoundaryPM(Node* (*lists)[2], Node* leaves, int numsymbols,
+                       NodePool* pool, int index) {
   Node* newchain;
   Node* oldchain;
   int lastcount = lists[index][1]->count;  /* Count of last chain of list. */
@@ -99,23 +100,20 @@ static void BoundaryPM(Node* (*lists)[2], Node* leaves, int numsymbols, NodePool
   }
 }
 
-static void BoundaryPMfinal(Node* (*lists)[2],
-                       Node* leaves, int numsymbols, NodePool* pool, int index) {
+static void BoundaryPMFinal(Node* (*lists)[2],
+    Node* leaves, int numsymbols, NodePool* pool, int index) {
   int lastcount = lists[index][1]->count;  /* Count of last chain of list. */
 
   size_t sum = lists[index - 1][0]->weight + lists[index - 1][1]->weight;
 
   if (lastcount < numsymbols && sum > leaves[lastcount].weight) {
-
     Node* newchain = pool->next;
     Node* oldchain = lists[index][1]->tail;
 
     lists[index][1] = newchain;
     newchain->count = lastcount + 1;
     newchain->tail = oldchain;
-
-  }
-  else{
+  } else {
     lists[index][1]->tail = lists[index - 1][1];
   }
 }
@@ -214,7 +212,7 @@ int ZopfliLengthLimitedCodeLengths(
     free(leaves);
     return 0;  /* Only one symbol, give it bitlength 1, not 0. OK. */
   }
-  if (numsymbols == 2){
+  if (numsymbols == 2) {
     bitlengths[leaves[0].count]++;
     bitlengths[leaves[1].count]++;
     free(leaves);
@@ -253,7 +251,7 @@ int ZopfliLengthLimitedCodeLengths(
   for (i = 0; i < numBoundaryPMRuns - 1; i++) {
     BoundaryPM(lists, leaves, numsymbols, &pool, maxbits - 1);
   }
-  BoundaryPMfinal(lists, leaves, numsymbols, &pool, maxbits - 1);
+  BoundaryPMFinal(lists, leaves, numsymbols, &pool, maxbits - 1);
 
   ExtractBitLengths(lists[maxbits - 1][1], leaves, bitlengths);
 
