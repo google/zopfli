@@ -197,7 +197,7 @@ static double GetCostModelMinCost(CostModelFun* costmodel, void* costcontext) {
   return costmodel(bestlength, bestdist, costcontext);
 }
 
-static size_t min(size_t a, size_t b) {
+static size_t zopfli_min(size_t a, size_t b) {
   return a < b ? a : b;
 }
 
@@ -283,7 +283,7 @@ static double GetBestLengths(ZopfliBlockState *s,
       }
     }
     /* Lengths. */
-    kend = min(leng, inend-i);
+    kend = zopfli_min(leng, inend-i);
     mincostaddcostj = mincost + costs[j];
     for (k = 3; k <= kend; k++) {
       double newCost;
