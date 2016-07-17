@@ -342,33 +342,48 @@ static void GetFixedTree(unsigned* ll_lengths, unsigned* d_lengths) {
 }
 
 /*
-Calculates size of the part after the header and tree of an LZ77 block, in bits.
+Same as CalculateBlockSymbolSize, but for block size smaller than histogram
+size.
 */
-static size_t CalculateBlockSymbolSize(const unsigned* ll_lengths,
-                                       const unsigned* d_lengths,
-                                       const ZopfliLZ77Store* lz77,
-                                       size_t lstart, size_t lend) {
+static size_t CalculateBlockSymbolSizeSmall(const unsigned* ll_lengths,
+                                            const unsigned* d_lengths,
+                                            const ZopfliLZ77Store* lz77,
+                                            size_t lstart, size_t lend) {
+  size_t result = 0;
+  size_t i;
+  for (i = lstart; i < lend; i++) {
+    assert(i < lz77->size);
+    assert(lz77->litlens[i] < 259);
+    if (lz77->dists[i] == 0) {
+      result += ll_lengths[lz77->litlens[i]];
+    } else {
+      int ll_symbol = ZopfliGetLengthSymbol(lz77->litlens[i]);
+      int d_symbol = ZopfliGetDistSymbol(lz77->dists[i]);
+      result += ll_lengths[ll_symbol];
+      result += d_lengths[d_symbol];
+      result += ZopfliGetLengthSymbolExtraBits(ll_symbol);
+      result += ZopfliGetDistSymbolExtraBits(d_symbol);
+    }
+  }
+  result += ll_lengths[256]; /*end symbol*/
+  return result;
+}
+
+/*
+Same as CalculateBlockSymbolSize, but with the histogram provided by the caller.
+*/
+static size_t CalculateBlockSymbolSizeGivenCounts(const size_t* ll_counts,
+                                                  const size_t* d_counts,
+                                                  const unsigned* ll_lengths,
+                                                  const unsigned* d_lengths,
+                                                  const ZopfliLZ77Store* lz77,
+                                                  size_t lstart, size_t lend) {
   size_t result = 0;
   size_t i;
   if (lstart + ZOPFLI_NUM_LL * 3 > lend) {
-    for (i = lstart; i < lend; i++) {
-      assert(i < lz77->size);
-      assert(lz77->litlens[i] < 259);
-      if (lz77->dists[i] == 0) {
-        result += ll_lengths[lz77->litlens[i]];
-      } else {
-        int ll_symbol = ZopfliGetLengthSymbol(lz77->litlens[i]);
-        int d_symbol = ZopfliGetDistSymbol(lz77->dists[i]);
-        result += ll_lengths[ll_symbol];
-        result += d_lengths[d_symbol];
-        result += ZopfliGetLengthSymbolExtraBits(ll_symbol);
-        result += ZopfliGetDistSymbolExtraBits(d_symbol);
-      }
-    }
+    return CalculateBlockSymbolSizeSmall(
+        ll_lengths, d_lengths, lz77, lstart, lend);
   } else {
-    size_t ll_counts[ZOPFLI_NUM_LL];
-    size_t d_counts[ZOPFLI_NUM_D];
-    ZopfliLZ77GetHistogram(lz77, lstart, lend, ll_counts, d_counts);
     for (i = 0; i < 256; i++) {
       result += ll_lengths[i] * ll_counts[i];
     }
@@ -380,9 +395,28 @@ static size_t CalculateBlockSymbolSize(const unsigned* ll_lengths,
       result += d_lengths[i] * d_counts[i];
       result += ZopfliGetDistSymbolExtraBits(i) * d_counts[i];
     }
+    result += ll_lengths[256]; /*end symbol*/
+    return result;
   }
-  result += ll_lengths[256]; /*end symbol*/
-  return result;
+}
+
+/*
+Calculates size of the part after the header and tree of an LZ77 block, in bits.
+*/
+static size_t CalculateBlockSymbolSize(const unsigned* ll_lengths,
+                                       const unsigned* d_lengths,
+                                       const ZopfliLZ77Store* lz77,
+                                       size_t lstart, size_t lend) {
+  if (lstart + ZOPFLI_NUM_LL * 3 > lend) {
+    return CalculateBlockSymbolSizeSmall(
+        ll_lengths, d_lengths, lz77, lstart, lend);
+  } else {
+    size_t ll_counts[ZOPFLI_NUM_LL];
+    size_t d_counts[ZOPFLI_NUM_D];
+    ZopfliLZ77GetHistogram(lz77, lstart, lend, ll_counts, d_counts);
+    return CalculateBlockSymbolSizeGivenCounts(
+        ll_counts, d_counts, ll_lengths, d_lengths, lz77, lstart, lend);
+  }
 }
 
 static size_t AbsDiff(size_t x, size_t y) {
@@ -393,9 +427,9 @@ static size_t AbsDiff(size_t x, size_t y) {
 }
 
 /*
-Change the population counts in a way that the consequent Huffman tree
-compression, especially its rle-part will be more likely to compress this data
-more efficiently. length containts the size of the histogram.
+Changes the population counts in a way that the consequent Huffman tree
+compression, especially its rle-part, will be more likely to compress this data
+more efficiently. length contains the size of the histogram.
 */
 void OptimizeHuffmanForRle(int length, size_t* counts) {
   int i, k, stride;
@@ -484,24 +518,67 @@ void OptimizeHuffmanForRle(int length, size_t* counts) {
 }
 
 /*
+Tries out OptimizeHuffmanForRle for this block, if the result is smaller,
+uses it, otherwise keeps the original. Returns size of encoded tree and data in
+bits, not including the 3-bit block header.
+*/
+static double TryOptimizeHuffmanForRle(
+    const ZopfliLZ77Store* lz77, size_t lstart, size_t lend,
+    const size_t* ll_counts, const size_t* d_counts,
+    unsigned* ll_lengths, unsigned* d_lengths) {
+  size_t ll_counts2[ZOPFLI_NUM_LL];
+  size_t d_counts2[ZOPFLI_NUM_D];
+  unsigned ll_lengths2[ZOPFLI_NUM_LL];
+  unsigned d_lengths2[ZOPFLI_NUM_D];
+  double treesize;
+  double datasize;
+  double treesize2;
+  double datasize2;
+
+  treesize = CalculateTreeSize(ll_lengths, d_lengths);
+  datasize = CalculateBlockSymbolSizeGivenCounts(ll_counts, d_counts,
+      ll_lengths, d_lengths, lz77, lstart, lend);
+
+  memcpy(ll_counts2, ll_counts, sizeof(ll_counts2));
+  memcpy(d_counts2, d_counts, sizeof(d_counts2));
+  OptimizeHuffmanForRle(ZOPFLI_NUM_LL, ll_counts2);
+  OptimizeHuffmanForRle(ZOPFLI_NUM_D, d_counts2);
+  ZopfliCalculateBitLengths(ll_counts2, ZOPFLI_NUM_LL, 15, ll_lengths2);
+  ZopfliCalculateBitLengths(d_counts2, ZOPFLI_NUM_D, 15, d_lengths2);
+  PatchDistanceCodesForBuggyDecoders(d_lengths2);
+
+  treesize2 = CalculateTreeSize(ll_lengths2, d_lengths2);
+  datasize2 = CalculateBlockSymbolSizeGivenCounts(ll_counts, d_counts,
+      ll_lengths2, d_lengths2, lz77, lstart, lend);
+
+  if (treesize2 + datasize2 < treesize + datasize) {
+    memcpy(ll_lengths, ll_lengths2, sizeof(ll_lengths2));
+    memcpy(d_lengths, d_lengths2, sizeof(d_lengths2));
+    return treesize2 + datasize2;
+  }
+  return treesize + datasize;
+}
+
+/*
 Calculates the bit lengths for the symbols for dynamic blocks. Chooses bit
 lengths that give the smallest size of tree encoding + encoding of all the
 symbols to have smallest output size. This are not necessarily the ideal Huffman
-bit lengths.
+bit lengths. Returns size of encoded tree and data in bits, not including the
+3-bit block header.
 */
-static void GetDynamicLengths(const ZopfliLZ77Store* lz77,
-                              size_t lstart, size_t lend,
-                              unsigned* ll_lengths, unsigned* d_lengths) {
+static double GetDynamicLengths(const ZopfliLZ77Store* lz77,
+                                size_t lstart, size_t lend,
+                                unsigned* ll_lengths, unsigned* d_lengths) {
   size_t ll_counts[ZOPFLI_NUM_LL];
   size_t d_counts[ZOPFLI_NUM_D];
 
   ZopfliLZ77GetHistogram(lz77, lstart, lend, ll_counts, d_counts);
   ll_counts[256] = 1;  /* End symbol. */
-  OptimizeHuffmanForRle(ZOPFLI_NUM_LL, ll_counts);
-  OptimizeHuffmanForRle(ZOPFLI_NUM_D, d_counts);
   ZopfliCalculateBitLengths(ll_counts, ZOPFLI_NUM_LL, 15, ll_lengths);
   ZopfliCalculateBitLengths(d_counts, ZOPFLI_NUM_D, 15, d_lengths);
   PatchDistanceCodesForBuggyDecoders(d_lengths);
+  return TryOptimizeHuffmanForRle(
+      lz77, lstart, lend, ll_counts, d_counts, ll_lengths, d_lengths);
 }
 
 double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77,
@@ -521,13 +598,11 @@ double ZopfliCalculateBlockSize(const ZopfliLZ77Store* lz77,
     return blocks * 5 * 8 + length * 8;
   } if (btype == 1) {
     GetFixedTree(ll_lengths, d_lengths);
+    result += CalculateBlockSymbolSize(
+        ll_lengths, d_lengths, lz77, lstart, lend);
   } else {
-    GetDynamicLengths(lz77, lstart, lend, ll_lengths, d_lengths);
-    result += CalculateTreeSize(ll_lengths, d_lengths);
+    result += GetDynamicLengths(lz77, lstart, lend, ll_lengths, d_lengths);
   }
-
-  result += CalculateBlockSymbolSize(
-      ll_lengths, d_lengths, lz77, lstart, lend);
 
   return result;
 }
