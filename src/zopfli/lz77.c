@@ -263,11 +263,8 @@ Indirectly, this affects:
  to the optimal output
 */
 static int GetLengthScore(int length, int distance) {
-  /*
-  At 1024, the distance uses 9+ extra bits and this seems to be the sweet spot
-  on tested files.
-  */
-  return distance > 1024 ? length - 1 : length;
+  return (length == 3 && distance > 1024) || (length == 4 && distance > 2048) ||
+  (length == 5 && distance > 4096) ? length - 1 : length;
 }
 
 void ZopfliVerifyLenDist(const unsigned char* data, size_t datasize, size_t pos,
