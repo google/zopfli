@@ -813,6 +813,8 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
                        unsigned char* bp, unsigned char** out,
                        size_t* outsize) {
   size_t i;
+  SymbolStats* stats;
+
   /* byte coordinates rather than lz77 index */
   size_t* splitpoints_uncompressed = 0;
   size_t npoints = 0;
@@ -820,6 +822,7 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
   double totalcost = 0;
   ZopfliLZ77Store lz77;
 
+  stats = 0;
   /* If btype=2 is specified, it tries all block types. If a lesser btype is
   given, then however it forces that one. Neither of the lesser types needs
   block splitting as they have no dynamic huffman trees. */
@@ -845,7 +848,7 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
   if (options->blocksplitting) {
     ZopfliBlockSplit(options, in, instart, inend,
                      options->blocksplittingmax,
-                     &splitpoints_uncompressed, &npoints);
+                     &splitpoints_uncompressed, &npoints, &stats);
     splitpoints = (size_t*)malloc(sizeof(*splitpoints) * npoints);
   }
 
@@ -858,7 +861,7 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
     ZopfliLZ77Store store;
     ZopfliInitLZ77Store(in, &store);
     ZopfliInitBlockState(options, start, end, 1, &s);
-    ZopfliLZ77Optimal(&s, in, start, end, options->numiterations, &store);
+    ZopfliLZ77Optimal(&s, in, start, end, options->numiterations, &store, stats ? &stats[i] : 0);
     totalcost += ZopfliCalculateBlockSizeAutoType(&store, 0, store.size);
 
     ZopfliAppendLZ77Store(&store, &lz77);
@@ -866,6 +869,10 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
 
     ZopfliCleanBlockState(&s);
     ZopfliCleanLZ77Store(&store);
+  }
+
+  if(stats){
+    free(stats);
   }
 
   /* Second block splitting attempt */

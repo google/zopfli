@@ -29,20 +29,7 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 #include "tree.h"
 #include "util.h"
 
-typedef struct SymbolStats {
-  /* The literal and length symbols. */
-  size_t litlens[ZOPFLI_NUM_LL];
-  /* The 32 unique dist symbols, not the 32768 possible dists. */
-  size_t dists[ZOPFLI_NUM_D];
-
-  /* Length of each lit/len symbol in bits. */
-  double ll_symbols[ZOPFLI_NUM_LL];
-  /* Length of each dist symbol in bits. */
-  double d_symbols[ZOPFLI_NUM_D];
-} SymbolStats;
-
-/* Sets everything to 0. */
-static void InitStats(SymbolStats* stats) {
+void InitStats(SymbolStats* stats) {
   memset(stats->litlens, 0, ZOPFLI_NUM_LL * sizeof(stats->litlens[0]));
   memset(stats->dists, 0, ZOPFLI_NUM_D * sizeof(stats->dists[0]));
 
@@ -394,8 +381,7 @@ static void CalculateStatistics(SymbolStats* stats) {
   ZopfliCalculateEntropy(stats->dists, ZOPFLI_NUM_D, stats->d_symbols);
 }
 
-/* Appends the symbol statistics from the store. */
-static void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats) {
+void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats) {
   size_t i;
   for (i = 0; i < store->size; i++) {
     if (store->dists[i] == 0) {
@@ -446,7 +432,7 @@ static double LZ77OptimalRun(ZopfliBlockState* s,
 void ZopfliLZ77Optimal(ZopfliBlockState *s,
                        const unsigned char* in, size_t instart, size_t inend,
                        int numiterations,
-                       ZopfliLZ77Store* store) {
+                       ZopfliLZ77Store* store, SymbolStats* instats) {
   /* Dist to get to here with smallest cost. */
   size_t blocksize = inend - instart;
   unsigned short* length_array =
@@ -478,8 +464,13 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   the statistics of the previous run. */
 
   /* Initial run. */
-  ZopfliLZ77Greedy(s, in, instart, inend, &currentstore, h);
-  GetStatistics(&currentstore, &stats);
+  if(!instats){
+    ZopfliLZ77Greedy(s, in, instart, inend, &currentstore, h);
+    GetStatistics(&currentstore, &stats);
+  }
+  else{
+    CopyStats(instats, &stats);
+  }
 
   /* Repeat statistics with each time the cost model from the previous stat
   run. */
