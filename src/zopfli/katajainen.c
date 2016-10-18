@@ -23,10 +23,19 @@ Bounded package merge algorithm, based on the paper
 Jyrki Katajainen, Alistair Moffat, Andrew Turpin".
 */
 
+#ifdef __cplusplus
+#include <algorithm>
+extern "C" {
+#endif
+
 #include "katajainen.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <limits.h>
+
+#ifdef __cplusplus
+}
+#endif
 
 typedef struct Node Node;
 
@@ -109,13 +118,18 @@ static void ExtractBitLengths(Node* chain, Node* leaves, unsigned* bitlengths) {
   }
 }
 
+#ifndef __cplusplus
 /*
 Comparator for sorting the leaves. Has the function signature for qsort.
 */
 static int LeafComparator(const void* a, const void* b) {
   return ((const Node*)a)->weight - ((const Node*)b)->weight;
 }
+#endif
 
+#ifdef __cplusplus
+extern "C"
+#endif
 int ZopfliLengthLimitedCodeLengths(
     const size_t* frequencies, int n, int maxbits, unsigned* bitlengths) {
   Node* pool;
@@ -177,7 +191,17 @@ int ZopfliLengthLimitedCodeLengths(
     }
     leaves[i].weight = (leaves[i].weight << 9) | leaves[i].count;
   }
+#ifdef __cplusplus
+  struct {
+    bool operator()(const Node a, const Node b) {
+      return (a.weight < b.weight);
+    }
+  } cmp;
+  std::sort(leaves, leaves + numsymbols, cmp);
+
+#else
   qsort(leaves, numsymbols, sizeof(Node), LeafComparator);
+#endif
   for (i = 0; i < numsymbols; i++) {
     leaves[i].weight >>= 9;
   }
