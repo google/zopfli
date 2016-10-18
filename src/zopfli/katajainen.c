@@ -125,6 +125,12 @@ Comparator for sorting the leaves. Has the function signature for qsort.
 static int LeafComparator(const void* a, const void* b) {
   return ((const Node*)a)->weight - ((const Node*)b)->weight;
 }
+#else
+struct {
+  bool operator()(const Node a, const Node b) {
+    return (a.weight < b.weight);
+  }
+} cmp;
 #endif
 
 #ifdef __cplusplus
@@ -192,13 +198,7 @@ int ZopfliLengthLimitedCodeLengths(
     leaves[i].weight = (leaves[i].weight << 9) | leaves[i].count;
   }
 #ifdef __cplusplus
-  struct {
-    bool operator()(const Node a, const Node b) {
-      return (a.weight < b.weight);
-    }
-  } cmp;
   std::sort(leaves, leaves + numsymbols, cmp);
-
 #else
   qsort(leaves, numsymbols, sizeof(Node), LeafComparator);
 #endif

@@ -36,6 +36,9 @@ maxbits: Maximum bit length, inclusive.
 bitlengths: Output, the bitlengths for the symbol prefix codes.
 return: 0 for OK, non-0 for error.
 */
+#ifdef __cplusplus
+extern "C"
+#endif
 int ZopfliLengthLimitedCodeLengths(
     const size_t* frequencies, int n, int maxbits, unsigned* bitlengths);
 
