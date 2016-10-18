@@ -100,35 +100,7 @@ static void ClearStatFreqs(SymbolStats* stats) {
 }
 
 /*
-Function that calculates a cost based on a model for the given LZ77 symbol.
-litlen: means literal symbol if dist is 0, length otherwise.
-*/
-typedef double CostModelFun(unsigned litlen, unsigned dist, void* context);
-
-/*
-Cost model which should exactly match fixed tree.
-type: CostModelFun
-*/
-static double GetCostFixed(unsigned litlen, unsigned dist, void* unused) {
-  (void)unused;
-  if (dist == 0) {
-    if (litlen <= 143) return 8;
-    else return 9;
-  } else {
-    int dbits = ZopfliGetDistExtraBits(dist);
-    int lbits = ZopfliGetLengthExtraBits(litlen);
-    int lsym = ZopfliGetLengthSymbol(litlen);
-    int cost = 0;
-    if (lsym <= 279) cost += 7;
-    else cost += 8;
-    cost += 5;  /* Every dist symbol has length 5. */
-    return cost + dbits + lbits;
-  }
-}
-
-/*
 Cost model based on symbol statistics.
-type: CostModelFun
 */
 static double GetCostStat(unsigned litlen, unsigned dist, void* context) {
   SymbolStats* stats = (SymbolStats*)context;
@@ -147,7 +119,7 @@ static double GetCostStat(unsigned litlen, unsigned dist, void* context) {
 Finds the minimum possible cost this cost model can return for valid length and
 distance symbols.
 */
-static double GetCostModelMinCost(CostModelFun* costmodel, void* costcontext) {
+static double GetCostModelMinCost(void* costcontext) {
   double mincost;
   int bestlength = 0; /* length that has lowest cost in the cost model */
   int bestdist = 0; /* distance that has lowest cost in the cost model */
@@ -165,7 +137,7 @@ static double GetCostModelMinCost(CostModelFun* costmodel, void* costcontext) {
 
   mincost = ZOPFLI_LARGE_FLOAT;
   for (i = 3; i < 259; i++) {
-    double c = costmodel(i, 1, costcontext);
+    double c = GetCostStat(i, 1, costcontext);
     if (c < mincost) {
       bestlength = i;
       mincost = c;
@@ -174,14 +146,14 @@ static double GetCostModelMinCost(CostModelFun* costmodel, void* costcontext) {
 
   mincost = ZOPFLI_LARGE_FLOAT;
   for (i = 0; i < 30; i++) {
-    double c = costmodel(3, dsymbols[i], costcontext);
+    double c = GetCostStat(3, dsymbols[i], costcontext);
     if (c < mincost) {
       bestdist = dsymbols[i];
       mincost = c;
     }
   }
 
-  return costmodel(bestlength, bestdist, costcontext);
+  return GetCostStat(bestlength, bestdist, costcontext);
 }
 
 static size_t zopfli_min(size_t a, size_t b) {
@@ -195,8 +167,7 @@ s: the ZopfliBlockState
 in: the input data array
 instart: where to start
 inend: where to stop (not inclusive)
-costmodel: function to calculate the cost of some lit/len/dist pair.
-costcontext: abstract context for the costmodel function
+costcontext: abstract context for the costmodel
 length_array: output array of size (inend - instart) which will receive the best
     length to reach this byte from a previous byte.
 returns the cost that was, according to the costmodel, needed to get to the end.
@@ -204,7 +175,7 @@ returns the cost that was, according to the costmodel, needed to get to the end.
 static double GetBestLengths(ZopfliBlockState *s,
                              const unsigned char* in,
                              size_t instart, size_t inend,
-                             CostModelFun* costmodel, void* costcontext,
+                             SymbolStats* costcontext,
                              unsigned short* length_array,
                              ZopfliHash* h, float* costs) {
   /* Best cost to get here so far. */
@@ -216,8 +187,33 @@ static double GetBestLengths(ZopfliBlockState *s,
   size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
       ? instart - ZOPFLI_WINDOW_SIZE : 0;
   double result;
-  double mincost = GetCostModelMinCost(costmodel, costcontext);
+  double mincost = costcontext ? GetCostModelMinCost(costcontext) : 12;
   double mincostaddcostj;
+  double* literals; /*Cost of a literal*/
+  double litlentable[259]; /*Cost of the length bits of a match*/
+  double disttable[30]; /*Cost of the distance bits of a match*/
+  if(costcontext){
+    literals = costcontext->ll_symbols;
+    for (i = 3; i < 259; i++){
+      litlentable[i] = costcontext->ll_symbols[ZopfliGetLengthSymbol(i)] + ZopfliGetLengthExtraBits(i);
+    }
+    for (i = 0; i < 30; i++){
+      disttable[i] =  costcontext->d_symbols[i] + (i < 4 ? 0 : (i - 2) / 2);
+    }
+  }
+  else{
+    double litstack[256];
+    literals = litstack;
+    for (i = 0; i < 256; i++){
+      literals[i] = 8 + (i > 143);
+    }
+    for (i = 3; i < 259; i++){
+      litlentable[i] = 12 + (i > 114) + ZopfliGetLengthExtraBits(i);
+    }
+    for (i = 0; i < 30; i++){
+      disttable[i] =  i < 4 ? 0 : (i - 2) / 2;
+    }
+  }
 
   if (instart == inend) return 0;
 
@@ -243,7 +239,7 @@ static double GetBestLengths(ZopfliBlockState *s,
         && i + ZOPFLI_MAX_MATCH * 2 + 1 < inend
         && h->same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK]
             > ZOPFLI_MAX_MATCH) {
-      double symbolcost = costmodel(ZOPFLI_MAX_MATCH, 1, costcontext);
+      double symbolcost = disttable[0] + litlentable[ZOPFLI_MAX_MATCH];
       /* Set the length to reach each one to ZOPFLI_MAX_MATCH, and the cost to
       the cost corresponding to that length. Doing this, we skip
       ZOPFLI_MAX_MATCH values to avoid calling ZopfliFindLongestMatch. */
@@ -262,7 +258,7 @@ static double GetBestLengths(ZopfliBlockState *s,
 
     /* Literal. */
     if (i + 1 <= inend) {
-      double newCost = costmodel(in[i], 0, costcontext) + costs[j];
+      double newCost = literals[in[i]] + costs[j];
       assert(newCost >= 0);
       if (newCost < costs[j + 1]) {
         costs[j + 1] = newCost;
@@ -275,11 +271,10 @@ static double GetBestLengths(ZopfliBlockState *s,
     for (k = 3; k <= kend; k++) {
       double newCost;
 
-      /* Calling the cost model is expensive, avoid this if we are already at
-      the minimum possible cost that it can return. */
-     if (costs[j + k] <= mincostaddcostj) continue;
-
-      newCost = costmodel(k, sublen[k], costcontext) + costs[j];
+      /* Calculating the cost is expensive, avoid this if we are already at
+      the minimum possible cost that it can be. */
+      if (costs[j + k] <= mincostaddcostj) continue;
+      newCost = disttable[ZopfliGetDistSymbol(sublen[k])] + litlentable[k] + costs[j];
       assert(newCost >= 0);
       if (newCost < costs[j + k]) {
         assert(k <= ZOPFLI_MAX_MATCH);
@@ -406,8 +401,7 @@ inend: where to stop (not inclusive)
 path: pointer to dynamically allocated memory to store the path
 pathsize: pointer to the size of the dynamic path array
 length_array: array of size (inend - instart) used to store lengths
-costmodel: function to use as the cost model for this squeeze run
-costcontext: abstract context for the costmodel function
+costcontext: abstract context for the costmodel
 store: place to output the LZ77 data
 returns the cost that was, according to the costmodel, needed to get to the end.
     This is not the actual cost.
@@ -415,10 +409,10 @@ returns the cost that was, according to the costmodel, needed to get to the end.
 static double LZ77OptimalRun(ZopfliBlockState* s,
     const unsigned char* in, size_t instart, size_t inend,
     unsigned short** path, size_t* pathsize,
-    unsigned short* length_array, CostModelFun* costmodel,
+    unsigned short* length_array,
     void* costcontext, ZopfliLZ77Store* store,
     ZopfliHash* h, float* costs) {
-  double cost = GetBestLengths(s, in, instart, inend, costmodel,
+  double cost = GetBestLengths(s, in, instart, inend,
                 costcontext, length_array, h, costs);
   free(*path);
   *path = 0;
@@ -478,7 +472,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
     ZopfliCleanLZ77Store(&currentstore);
     ZopfliInitLZ77Store(in, &currentstore);
     LZ77OptimalRun(s, in, instart, inend, &path, &pathsize,
-                   length_array, GetCostStat, (void*)&stats,
+                   length_array, (void*)&stats,
                    &currentstore, h, costs);
     cost = ZopfliCalculateBlockSize(&currentstore, 0, currentstore.size, 2);
     if (s->options->verbose_more || (s->options->verbose && cost < bestcost)) {
@@ -542,7 +536,7 @@ void ZopfliLZ77OptimalFixed(ZopfliBlockState *s,
   /* Shortest path for fixed tree This one should give the shortest possible
   result for fixed tree, no repeated runs are needed since the tree is known. */
   LZ77OptimalRun(s, in, instart, inend, &path, &pathsize,
-                 length_array, GetCostFixed, 0, store, h, costs);
+                 length_array, 0, store, h, costs);
 
   free(length_array);
   free(path);
