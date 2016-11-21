@@ -164,9 +164,25 @@ static void ExtractBitLengths(Node* chain, Node* leaves, unsigned* bitlengths) {
 
 /*
 Comparator for sorting the leaves. Has the function signature for qsort.
+Qsort requires both weights and counts sorting order to be defined here
+as weights tend to be equal and without counts sorting defined qsort
+inconsistency could occur among compilers, that in turn would impact block
+splitter and compression.
 */
 static int LeafComparator(const void* a, const void* b) {
-  return ((const Node*)a)->weight - ((const Node*)b)->weight;
+  const Node *aa = ((const Node*)a);
+  const Node *bb = ((const Node*)b);
+  if(aa->weight < bb->weight)
+   return -1;
+  else if(aa->weight > bb->weight)
+   return 1;
+  else if(aa->count < bb->count)
+   return -1;
+  else if(aa->count > bb->count)
+   return 1;
+  else
+   return 0;
+}
 }
 
 int ZopfliLengthLimitedCodeLengths(
