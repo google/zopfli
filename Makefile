@@ -1,8 +1,12 @@
 CC = gcc
 CXX = g++
+AR = ar
 
 CFLAGS = -W -Wall -Wextra -ansi -pedantic -lm -O2 -Wno-unused-function
 CXXFLAGS = -W -Wall -Wextra -ansi -pedantic -O2
+ARFLAGS = rv
+ZOPFLI_TARGET = libzopfli.a
+ZOPFLIPNG_TARGET = libzopflipng.a
 
 ZOPFLILIB_SRC = src/zopfli/blocksplitter.c src/zopfli/cache.c\
                 src/zopfli/deflate.c src/zopfli/gzip_container.c\
@@ -13,7 +17,9 @@ ZOPFLILIB_SRC = src/zopfli/blocksplitter.c src/zopfli/cache.c\
 ZOPFLILIB_OBJ := $(patsubst src/zopfli/%.c,%.o,$(ZOPFLILIB_SRC))
 ZOPFLIBIN_SRC := src/zopfli/zopfli_bin.c
 LODEPNG_SRC := src/zopflipng/lodepng/lodepng.cpp src/zopflipng/lodepng/lodepng_util.cpp
+LODEPNG_OBJ := $(patsubst src/zopflipng/lodepng/%.cpp,%.o,$(LODEPNG_SRC))
 ZOPFLIPNGLIB_SRC := src/zopflipng/zopflipng_lib.cc
+ZOPFLIPNGLIB_OBJ := $(patsubst src/zopflipng/%.cc,%.o,$(ZOPFLIPNGLIB_SRC))
 ZOPFLIPNGBIN_SRC := src/zopflipng/zopflipng_bin.cc
 
 .PHONY: zopfli zopflipng
@@ -21,6 +27,7 @@ ZOPFLIPNGBIN_SRC := src/zopflipng/zopflipng_bin.cc
 # Zopfli binary
 zopfli:
 	$(CC) $(ZOPFLILIB_SRC) $(ZOPFLIBIN_SRC) $(CFLAGS) -o zopfli
+	$(AR) $(ARFLAGS) $(ZOPFLI_TARGET) $(ZOPFLILIB_OBJ)
 
 # Zopfli shared library
 libzopfli:
@@ -30,7 +37,9 @@ libzopfli:
 # ZopfliPNG binary
 zopflipng:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) -c
+	$(CXX) $(ZOPFLIPNGLIB_SRC) $(LODEPNG_SRC) $(CXXFLAGS) -c
 	$(CXX) $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(ZOPFLIPNGBIN_SRC) $(CFLAGS) -o zopflipng
+	$(AR) $(ARFLAGS) $(ZOPFLIPNG_TARGET) $(ZOPFLILIB_OBJ) $(LODEPNG_OBJ) $(ZOPFLIPNGLIB_OBJ)
 
 # ZopfliPNG shared library
 libzopflipng:
