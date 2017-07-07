@@ -114,14 +114,11 @@ static void CompressFile(const ZopfliOptions* options,
   if (outfilename) {
     SaveFile(outfilename, out, outsize);
   } else {
-    size_t i;
 #if _WIN32
     /* Windows workaround for stdout output. */
     _setmode(_fileno(stdout), _O_BINARY);
 #endif
-    for (i = 0; i < outsize; i++) {
-      printf("%c", out[i]);
-    }
+    fwrite(out, 1, outsize, stdout);
   }
 
   free(out);
