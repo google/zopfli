@@ -16,7 +16,21 @@ LODEPNG_SRC := src/zopflipng/lodepng/lodepng.cpp src/zopflipng/lodepng/lodepng_u
 ZOPFLIPNGLIB_SRC := src/zopflipng/zopflipng_lib.cc
 ZOPFLIPNGBIN_SRC := src/zopflipng/zopflipng_bin.cc
 
-.PHONY: zopfli zopflipng
+LIBVER_MAJOR=1
+LIBVER=1.0.1
+SHARED_EXT = so
+SHARED_EXT_MAJOR = $(SHARED_EXT).$(LIBVER_MAJOR)
+SHARED_EXT_VER = $(SHARED_EXT).$(LIBVER)
+
+DESTDIR?=
+PREFIX ?= /usr/local
+LIBDIR = $(PREFIX)/lib
+INCLUDEDIR = $(PREFIX)/include
+
+
+all: zopfli libzopfli
+
+.PHONY: zopfli zopflipng libzopfli libzopflipng install clean
 
 # Zopfli binary
 zopfli:
@@ -25,7 +39,9 @@ zopfli:
 # Zopfli shared library
 libzopfli:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) -fPIC -c
-	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.1
+	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) -shared -Wl,-soname,$@.$(SHARED_EXT_MAJOR) -o $@.$(SHARED_EXT_VER)
+	@ln -sf $@.$(SHARED_EXT_VER) $@.$(SHARED_EXT_MAJOR)
+	@ln -sf $@.$(SHARED_EXT_VER) $@.$(SHARED_EXT)
 
 # ZopfliPNG binary
 zopflipng:
@@ -40,3 +56,9 @@ libzopflipng:
 # Remove all libraries and binaries
 clean:
 	rm -f zopflipng zopfli $(ZOPFLILIB_OBJ) libzopfli*
+
+install: libzopfli
+	@install -m 755 libzopfli.$(SHARED_EXT_VER) $(DESTDIR)$(LIBDIR)/libzopfli.$(SHARED_EXT_VER)
+	@cp -a libzopfli.$(SHARED_EXT_MAJOR) $(DESTDIR)$(LIBDIR)
+	@cp -a libzopfli.$(SHARED_EXT) $(DESTDIR)$(LIBDIR)
+	@install -m 644 src/zopfli/zopfli.h $(DESTDIR)$(INCLUDEDIR)/zopfli/zopfli.h
