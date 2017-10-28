@@ -926,6 +926,7 @@ void ZopfliDeflate(const ZopfliOptions* options, int btype, int final,
     fprintf(stderr,
             "Original Size: %lu, Deflate: %lu, Compression: %f%% Removed\n",
             (unsigned long)insize, (unsigned long)(*outsize - offset),
-            100.0 * (double)(insize - (*outsize - offset)) / (double)insize);
+            100.0 * (double)(ssize_t)(insize - (*outsize - offset))
+              / (double)insize);
   }
 }
