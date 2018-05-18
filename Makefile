@@ -25,7 +25,7 @@ zopfli:
 # Zopfli shared library
 libzopfli:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) -fPIC -c
-	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.1
+	$(CC) $(ZOPFLILIB_OBJ) $(CFLAGS) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.2
 
 # ZopfliPNG binary
 zopflipng:
@@ -35,7 +35,7 @@ zopflipng:
 # ZopfliPNG shared library
 libzopflipng:
 	$(CC) $(ZOPFLILIB_SRC) $(CFLAGS) -fPIC -c
-	$(CXX) $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(CFLAGS) -fPIC --shared -Wl,-soname,libzopflipng.so.1 -o libzopflipng.so.1.0.0
+	$(CXX) $(ZOPFLILIB_OBJ) $(LODEPNG_SRC) $(ZOPFLIPNGLIB_SRC) $(CFLAGS) -fPIC --shared -Wl,-soname,libzopflipng.so.1 -o libzopflipng.so.1.0.2
 
 # Remove all libraries and binaries
 clean:
