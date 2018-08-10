@@ -54,7 +54,7 @@ add_library(libzopfli
 )
 set_target_properties(libzopfli PROPERTIES
   OUTPUT_NAME zopfli
-  VERSION 1.0.1
+  VERSION 1.0.2
   SOVERSION 1
 )
 if(UNIX)
@@ -71,7 +71,7 @@ add_library(libzopflipng
 )
 set_target_properties(libzopflipng PROPERTIES
   OUTPUT_NAME zopflipng
-  VERSION 1.0.0
+  VERSION 1.0.2
   SOVERSION 1
 )
 
