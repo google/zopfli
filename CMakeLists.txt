@@ -61,6 +61,7 @@ endif()
 add_library(libzopfli
   $<TARGET_OBJECTS:zopflilib_obj>
 )
+target_include_directories(libzopfli INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src/zopfli")
 set_target_properties(libzopfli PROPERTIES
   OUTPUT_NAME zopfli
   VERSION ${ZOPFLI_VERSION}
@@ -78,6 +79,7 @@ add_library(libzopflipng
   ${lodepng_src}
   $<TARGET_OBJECTS:zopflilib_obj>
 )
+target_include_directories(libzopflipng INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src/zopflipng")
 set_target_properties(libzopflipng PROPERTIES
   OUTPUT_NAME zopflipng
   VERSION ${ZOPFLI_VERSION}
