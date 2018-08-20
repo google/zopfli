@@ -2,6 +2,14 @@ cmake_minimum_required(VERSION 2.8.11)
 
 project(Zopfli)
 
+#
+# Library version
+#
+set(ZOPFLI_VERSION_MAJOR 1)
+set(ZOPFLI_VERSION_MINOR 0)
+set(ZOPFLI_VERSION_PATCH 2)
+set(ZOPFLI_VERSION "${ZOPFLI_VERSION_MAJOR}.${ZOPFLI_VERSION_MINOR}.${ZOPFLI_VERSION_PATCH}")
+
 option(BUILD_SHARED_LIBS "Build Zopfli with shared libraries" OFF)
 option(ZOPFLI_BUILD_INSTALL "Add Zopfli install target" ON)
 
@@ -55,8 +63,8 @@ add_library(libzopfli
 )
 set_target_properties(libzopfli PROPERTIES
   OUTPUT_NAME zopfli
-  VERSION 1.0.2
-  SOVERSION 1
+  VERSION ${ZOPFLI_VERSION}
+  SOVERSION ${ZOPFLI_VERSION_MAJOR}
 )
 if(UNIX)
   target_link_libraries(libzopfli m)
@@ -72,8 +80,8 @@ add_library(libzopflipng
 )
 set_target_properties(libzopflipng PROPERTIES
   OUTPUT_NAME zopflipng
-  VERSION 1.0.2
-  SOVERSION 1
+  VERSION ${ZOPFLI_VERSION}
+  SOVERSION ${ZOPFLI_VERSION_MAJOR}
 )
 
 #
