@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.11)
 
 project(Zopfli)
 
@@ -11,7 +11,7 @@ endif()
 if(MSVC)
   add_definitions(/D_CRT_SECURE_NO_WARNINGS)
 endif()
- 
+
 set(zopflilib_src
   src/zopfli/blocksplitter.c
   src/zopfli/cache.c
