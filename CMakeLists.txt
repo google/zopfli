@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 2.8.11)
 project(Zopfli)
 
 option(BUILD_SHARED_LIBS "Build Zopfli with shared libraries" OFF)
+option(ZOPFLI_BUILD_INSTALL "Add Zopfli install target" ON)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -86,3 +87,18 @@ target_link_libraries(zopfli libzopfli)
 #
 add_executable(zopflipng src/zopflipng/zopflipng_bin.cc)
 target_link_libraries(zopflipng libzopflipng)
+
+#
+# Install
+#
+if(ZOPFLI_BUILD_INSTALL)
+  include(GNUInstallDirs)
+  install(TARGETS libzopfli libzopflipng zopfli zopflipng
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  )
+  install(FILES include/zopfli.h include/zopflipng_lib.h
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  )
+endif()
