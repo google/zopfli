@@ -449,7 +449,7 @@ void OptimizeHuffmanForRle(int length, size_t* counts) {
   }
   /* 2) Let's mark all population counts that already can be encoded
   with an rle code.*/
-  good_for_rle = (int*)malloc(length * sizeof(int));
+  good_for_rle = (int*)malloc((unsigned)length * sizeof(int));
   for (i = 0; i < length; ++i) good_for_rle[i] = 0;
 
   /* Let's not spoil any of the existing good rle codes.
