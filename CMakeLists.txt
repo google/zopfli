@@ -2,6 +2,33 @@ cmake_minimum_required(VERSION 2.8.11)
 
 project(Zopfli)
 
+# Check if being built standalone
+set(zopfli_standalone FALSE)
+get_directory_property(zopfli_parent_directory PARENT_DIRECTORY)
+if("${zopfli_parent_directory}" STREQUAL "")
+  set(zopfli_standalone TRUE)
+endif()
+unset(zopfli_parent_directory)
+
+#
+# Options
+#
+
+# Default to BUILD_SHARED_LIBS if set, but allow overriding it
+set(zopfli_shared_default OFF)
+if(DEFINED BUILD_SHARED_LIBS)
+  set(zopfli_shared_default ${BUILD_SHARED_LIBS})
+endif()
+option(ZOPFLI_BUILD_SHARED "Build Zopfli with shared libraries" ${zopfli_shared_default})
+unset(zopfli_shared_default)
+
+# If standalone or shared subproject, default to building install
+if(zopfli_standalone OR ZOPFLI_BUILD_SHARED)
+  option(ZOPFLI_BUILD_INSTALL "Add Zopfli install target" ON)
+else()
+  option(ZOPFLI_BUILD_INSTALL "Add Zopfli install target" OFF)
+endif()
+
 #
 # Library version
 #
@@ -10,13 +37,16 @@ set(ZOPFLI_VERSION_MINOR 0)
 set(ZOPFLI_VERSION_PATCH 2)
 set(ZOPFLI_VERSION "${ZOPFLI_VERSION_MAJOR}.${ZOPFLI_VERSION_MINOR}.${ZOPFLI_VERSION_PATCH}")
 
-option(BUILD_SHARED_LIBS "Build Zopfli with shared libraries" OFF)
-option(ZOPFLI_BUILD_INSTALL "Add Zopfli install target" ON)
-
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+if(zopfli_standalone)
   if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     message(STATUS "Zopfli build type is default (CMAKE_BUILD_TYPE empty)")
   endif()
+endif()
+
+if(ZOPFLI_BUILD_SHARED)
+  set(zopfli_library_type SHARED)
+else()
+  set(zopfli_library_type STATIC)
 endif()
 
 set(zopflilib_src
@@ -49,14 +79,14 @@ set (lodepng_src
 add_library(zopflilib_obj OBJECT
   ${zopflilib_src}
 )
-if(BUILD_SHARED_LIBS)
+if(ZOPFLI_BUILD_SHARED)
   set_property(TARGET zopflilib_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 
 #
 # libzopfli
 #
-add_library(libzopfli
+add_library(libzopfli ${zopfli_library_type}
   $<TARGET_OBJECTS:zopflilib_obj>
 )
 target_include_directories(libzopfli INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src/zopfli")
@@ -72,7 +102,7 @@ endif()
 #
 # libzopflipng
 #
-add_library(libzopflipng
+add_library(libzopflipng ${zopfli_library_type}
   ${zopflipnglib_src}
   ${lodepng_src}
   $<TARGET_OBJECTS:zopflilib_obj>
