@@ -114,6 +114,17 @@ set_target_properties(libzopflipng PROPERTIES
   SOVERSION ${ZOPFLI_VERSION_MAJOR}
 )
 
+# MSVC does not export symbols by default when building a DLL, this is a
+# workaround for recent versions of CMake
+if(MSVC AND ZOPFLI_BUILD_SHARED)
+  if(CMAKE_VERSION VERSION_LESS 3.4)
+    message(WARNING "Automatic export of all symbols to DLL not supported until CMake 3.4")
+  else()
+    set_target_properties(libzopfli PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    set_target_properties(libzopflipng PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  endif()
+endif()
+
 #
 # zopfli
 #
