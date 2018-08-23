@@ -13,8 +13,10 @@ set(ZOPFLI_VERSION "${ZOPFLI_VERSION_MAJOR}.${ZOPFLI_VERSION_MINOR}.${ZOPFLI_VER
 option(BUILD_SHARED_LIBS "Build Zopfli with shared libraries" OFF)
 option(ZOPFLI_BUILD_INSTALL "Add Zopfli install target" ON)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "Zopfli build type is default (CMAKE_BUILD_TYPE empty)")
+  endif()
 endif()
 
 if(MSVC)
