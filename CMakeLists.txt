@@ -19,10 +19,6 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
   endif()
 endif()
 
-if(MSVC)
-  add_definitions(/D_CRT_SECURE_NO_WARNINGS)
-endif()
-
 set(zopflilib_src
   src/zopfli/blocksplitter.c
   src/zopfli/cache.c
@@ -93,12 +89,18 @@ set_target_properties(libzopflipng PROPERTIES
 #
 add_executable(zopfli src/zopfli/zopfli_bin.c)
 target_link_libraries(zopfli libzopfli)
+if(MSVC)
+  target_compile_definitions(zopfli PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
 
 #
 # zopflipng
 #
 add_executable(zopflipng src/zopflipng/zopflipng_bin.cc)
 target_link_libraries(zopflipng libzopflipng)
+if(MSVC)
+  target_compile_definitions(zopflipng PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
 
 #
 # Install
