@@ -95,8 +95,8 @@ set_target_properties(libzopfli PROPERTIES
   VERSION ${ZOPFLI_VERSION}
   SOVERSION ${ZOPFLI_VERSION_MAJOR}
 )
-if(UNIX)
-  target_link_libraries(libzopfli m)
+if(UNIX AND NOT (BEOS OR HAIKU))
+  target_link_libraries(libzopfli PRIVATE m)
 endif()
 
 #
