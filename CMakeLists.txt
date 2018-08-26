@@ -5,7 +5,7 @@ project(Zopfli)
 # Check if being built standalone
 set(zopfli_standalone FALSE)
 get_directory_property(zopfli_parent_directory PARENT_DIRECTORY)
-if("${zopfli_parent_directory}" STREQUAL "")
+if(zopfli_parent_directory STREQUAL "")
   set(zopfli_standalone TRUE)
 endif()
 unset(zopfli_parent_directory)
@@ -68,7 +68,7 @@ set(zopflipnglib_src
   src/zopflipng/zopflipng_lib.cc
 )
 
-set (lodepng_src
+set(lodepng_src
   src/zopflipng/lodepng/lodepng.cpp
   src/zopflipng/lodepng/lodepng_util.cpp
 )
