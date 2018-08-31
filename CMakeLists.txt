@@ -37,6 +37,21 @@ else()
   option(ZOPFLI_BUILD_INSTALL "Add Zopfli install target" OFF)
 endif()
 
+# ZOPFLI_DEFAULT_RELEASE enables changing empty build type to Release
+#
+# Make based single-configuration generators default to an empty build type,
+# which might be surprising, but could be useful if you want full control over
+# compiler and linker flags. When ZOPFLI_DEFAULT_RELEASE is ON, change an
+# empty default build type to Release.
+option(ZOPFLI_DEFAULT_RELEASE "If CMAKE_BUILD_TYPE is empty, default to Release" ON)
+
+if(zopfli_standalone AND ZOPFLI_DEFAULT_RELEASE)
+  if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "CMAKE_BUILD_TYPE empty, defaulting to Release")
+    set(CMAKE_BUILD_TYPE Release)
+  endif()
+endif()
+
 #
 # Library version
 #
@@ -44,12 +59,6 @@ set(ZOPFLI_VERSION_MAJOR 1)
 set(ZOPFLI_VERSION_MINOR 0)
 set(ZOPFLI_VERSION_PATCH 2)
 set(ZOPFLI_VERSION "${ZOPFLI_VERSION_MAJOR}.${ZOPFLI_VERSION_MINOR}.${ZOPFLI_VERSION_PATCH}")
-
-if(zopfli_standalone)
-  if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message(STATUS "Zopfli build type is default (CMAKE_BUILD_TYPE empty)")
-  endif()
-endif()
 
 if(ZOPFLI_BUILD_SHARED)
   set(zopfli_library_type SHARED)
