@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.11)
 
 project(Zopfli)
 
-# Check if being built standalone
+# Check if Zopfli is the top-level project (standalone), or a subproject
 set(zopfli_standalone FALSE)
 get_directory_property(zopfli_parent_directory PARENT_DIRECTORY)
 if(zopfli_parent_directory STREQUAL "")
@@ -14,7 +14,12 @@ unset(zopfli_parent_directory)
 # Options
 #
 
-# Default to BUILD_SHARED_LIBS if set, but allow overriding it
+# ZOPFLI_BUILD_SHARED controls if Zopfli libraries are built as shared or
+# static
+#
+# It defaults to the value of BUILD_SHARED_LIBS if set, and in most cases
+# that should be used instead. The purpose of ZOPFLI_BUILD_SHARED is to allow
+# overriding it when built as a subproject.
 set(zopfli_shared_default OFF)
 if(DEFINED BUILD_SHARED_LIBS)
   set(zopfli_shared_default ${BUILD_SHARED_LIBS})
@@ -22,7 +27,10 @@ endif()
 option(ZOPFLI_BUILD_SHARED "Build Zopfli with shared libraries" ${zopfli_shared_default})
 unset(zopfli_shared_default)
 
-# If standalone or shared subproject, default to building install
+# ZOPFLI_BUILD_INSTALL controls if Zopfli adds an install target to the build
+#
+# When built standalone or as a shared library subproject, the default is ON,
+# and for static library subproject the default is OFF.
 if(zopfli_standalone OR ZOPFLI_BUILD_SHARED)
   option(ZOPFLI_BUILD_INSTALL "Add Zopfli install target" ON)
 else()
