@@ -1,4 +1,5 @@
-Zopfli Compression Algorithm is a compression library programmed in C to perform
+## Zopfli Compression Algorithm 
+its is a compression library programmed in C to perform
 very good, but slow, deflate or zlib compression.
 
 The basic function to compress data is ZopfliCompress in zopfli.h. Use the
