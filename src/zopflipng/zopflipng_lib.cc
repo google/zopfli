@@ -229,10 +229,7 @@ unsigned TryOptimize(
   // For very small output, also try without palette, it may be smaller thanks
   // to no palette storage overhead.
   if (!error && out->size() < 4096 && !keep_colortype) {
-    lodepng::State teststate;
-    std::vector<unsigned char> temp;
-    lodepng::decode(temp, w, h, teststate, *out);
-    if (teststate.info_png.color.colortype == LCT_PALETTE) {
+    if (lodepng::getPNGHeaderInfo(*out).color.colortype == LCT_PALETTE) {
       LodePNGColorStats stats;
       lodepng_color_stats_init(&stats);
       lodepng_compute_color_stats(&stats, &image[0], w, h, &state.info_raw);
