@@ -1,3 +1,5 @@
+[![Travis Status](https://api.travis-ci.com/google/zopfli.svg?branch=master)](https://travis-ci.com/google/zopfli)
+
 Zopfli Compression Algorithm is a compression library programmed in C to perform
 very good, but slow, deflate or zlib compression.
 
@@ -13,8 +15,10 @@ gzip_container.h.
 
 ZopfliDeflate creates a valid deflate stream in memory, see:
 http://www.ietf.org/rfc/rfc1951.txt
+
 ZopfliZlibCompress creates a valid zlib stream in memory, see:
 http://www.ietf.org/rfc/rfc1950.txt
+
 ZopfliGzipCompress creates a valid gzip stream in memory, see:
 http://www.ietf.org/rfc/rfc1952.txt
 
@@ -29,7 +33,7 @@ The source code of Zopfli is under src/zopfli. Build instructions:
 
 To build zopfli, compile all .c source files under src/zopfli to a single binary
 with C, and link to the standard C math library, e.g.:
-gcc src/zopfli/*.c -O2 -W -Wall -Wextra -Wno-unused-function -ansi -pedantic -lm -o zopfli
+`gcc src/zopfli/*.c -O2 -W -Wall -Wextra -Wno-unused-function -ansi -pedantic -lm -o zopfli`
 
 A makefile is provided as well, but only for linux. Use "make" to build the
 binary, "make libzopfli" to build it as a shared library. For other platforms,
