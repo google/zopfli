@@ -1,6 +1,4 @@
-[![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/google/zopfli?branch=master&svg=true)](https://ci.appveyor.com/project/google/zopfli)
-
-## ZopfliPNG ## 
+## ZopfliPNG ## [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/google/zopfli?branch=master&svg=true)](https://ci.appveyor.com/project/google/zopfli)
 ZopfliPNG is a command line program to optimize the Portable Network Graphics
 (PNG) images. This version has the following features:
 - uses Zopfli compression for the Deflate compression,
