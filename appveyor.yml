@@ -5,7 +5,7 @@ configuration: Release
 environment:
   matrix:
    - compiler: cmake
-     instal-script: 'cd %APPVEYOR_BUILD_FOLDER% & mkdir cmake_build & cd cmake_build & cmake --version & cmake c:\projects\zopfli'
+     instal-script: 'cd %APPVEYOR_BUILD_FOLDER% & mkdir cmake_build & cd cmake_build & cmake --version & cmake -A x64 c:\projects\zopfli'
    - compiler: cygwin64
      instal-script: 'SET PATH=C:\cygwin64\bin;%PATH%'
 
