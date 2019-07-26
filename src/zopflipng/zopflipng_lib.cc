@@ -239,8 +239,8 @@ unsigned TryOptimize(
       // Too small for tRNS chunk overhead.
       if (w * h <= 16 && profile.key) profile.alpha = 1;
       state.encoder.auto_convert = 0;
-      state.info_png.color.colortype = (profile.alpha ? LCT_RGBA : LCT_RGB);
-      state.info_png.color.bitdepth = 8;
+      state.info_png.color.colortype = (profile.alpha ? (profile.colored ? LCT_RGBA : LCT_GREY_ALPHA) : (profile.colored ? LCT_RGB : LCT_GREY));
+      state.info_png.color.bitdepth = (profile.alpha || profile.colored) ? 8 : profile.bits;
       state.info_png.color.key_defined = (profile.key && !profile.alpha);
       if (state.info_png.color.key_defined) {
         state.info_png.color.key_defined = 1;

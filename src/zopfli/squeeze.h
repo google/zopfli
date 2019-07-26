@@ -33,6 +33,24 @@ solution.
 
 #include "lz77.h"
 
+typedef struct SymbolStats {
+  /* The literal and length symbols. */
+  size_t litlens[ZOPFLI_NUM_LL];
+  /* The 32 unique dist symbols, not the 32768 possible dists. */
+  size_t dists[ZOPFLI_NUM_D];
+
+  /* Length of each lit/len symbol in bits. */
+  double ll_symbols[ZOPFLI_NUM_LL];
+  /* Length of each dist symbol in bits. */
+  double d_symbols[ZOPFLI_NUM_D];
+} SymbolStats;
+
+/* Sets everything to 0. */
+void InitStats(SymbolStats* stats);
+
+/* Appends the symbol statistics from the store. */
+void GetStatistics(const ZopfliLZ77Store* store, SymbolStats* stats);
+
 /*
 Calculates lit/len and dist pairs for given data.
 If instart is larger than 0, it uses values before instart as starting
@@ -41,7 +59,7 @@ dictionary.
 void ZopfliLZ77Optimal(ZopfliBlockState *s,
                        const unsigned char* in, size_t instart, size_t inend,
                        int numiterations,
-                       ZopfliLZ77Store* store);
+                       ZopfliLZ77Store* store, SymbolStats* instats);
 
 /*
 Does the same as ZopfliLZ77Optimal, but optimized for the fixed tree of the
