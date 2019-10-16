@@ -233,20 +233,20 @@ unsigned TryOptimize(
     std::vector<unsigned char> temp;
     lodepng::decode(temp, w, h, teststate, *out);
     if (teststate.info_png.color.colortype == LCT_PALETTE) {
-      LodePNGColorProfile profile;
-      lodepng_color_profile_init(&profile);
-      lodepng_get_color_profile(&profile, &image[0], w, h, &state.info_raw);
+      LodePNGColorStats stats;
+      lodepng_color_stats_init(&stats);
+      lodepng_compute_color_stats(&stats, &image[0], w, h, &state.info_raw);
       // Too small for tRNS chunk overhead.
-      if (w * h <= 16 && profile.key) profile.alpha = 1;
+      if (w * h <= 16 && stats.key) stats.alpha = 1;
       state.encoder.auto_convert = 0;
-      state.info_png.color.colortype = (profile.alpha ? LCT_RGBA : LCT_RGB);
+      state.info_png.color.colortype = (stats.alpha ? LCT_RGBA : LCT_RGB);
       state.info_png.color.bitdepth = 8;
-      state.info_png.color.key_defined = (profile.key && !profile.alpha);
+      state.info_png.color.key_defined = (stats.key && !stats.alpha);
       if (state.info_png.color.key_defined) {
         state.info_png.color.key_defined = 1;
-        state.info_png.color.key_r = (profile.key_r & 255u);
-        state.info_png.color.key_g = (profile.key_g & 255u);
-        state.info_png.color.key_b = (profile.key_b & 255u);
+        state.info_png.color.key_r = (stats.key_r & 255u);
+        state.info_png.color.key_g = (stats.key_g & 255u);
+        state.info_png.color.key_b = (stats.key_b & 255u);
       }
 
       std::vector<unsigned char> out2;

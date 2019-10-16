@@ -1,7 +1,7 @@
 /*
 LodePNG Utils
 
-Copyright (c) 2005-2014 Lode Vandevenne
+Copyright (c) 2005-2019 Lode Vandevenne
 
 This software is provided 'as-is', without any express or implied
 warranty. In no event will the authors be held liable for any damages
@@ -25,16 +25,17 @@ freely, subject to the following restrictions:
 
 /*
 Extra C++ utilities for LodePNG, for convenience.
+Not part of the stable API of lodepng, more loose separate utils.
 */
+
+#ifndef LODEPNG_UTIL_H
+#define LODEPNG_UTIL_H
 
 #include <string>
 #include <vector>
 #include "lodepng.h"
 
-#pragma once
-
-namespace lodepng
-{
+namespace lodepng {
 
 /*
 Returns info from the header of the PNG by value, purely for convenience.
@@ -114,11 +115,147 @@ is the second half of the 3th byte, in big endian (PNG's endian order).
 */
 int getPaletteValue(const unsigned char* data, size_t i, int bits);
 
+#ifdef LODEPNG_COMPILE_ANCILLARY_CHUNKS
+
+/* Similar to convertRGBModel, but the 'to' model is sRGB. The pixel format
+of in and out must be the same and is given by state_in->info_raw. An
+error may occur if the pixel format cannot contain the new colors (e.g. palette) */
+unsigned convertToSrgb(unsigned char* out, const unsigned char* in,
+                       unsigned w, unsigned h,
+                       const LodePNGState* state_in);
+
+/* Similar to convertRGBModel, but the 'from' model is sRGB. The pixel format
+of in and out must be the same and is given by state_out->info_raw. An
+error may occur if the pixel format cannot contain the new colors (e.g. palette) */
+unsigned convertFromSrgb(unsigned char* out, const unsigned char* in,
+                         unsigned w, unsigned h,
+                         const LodePNGState* state_out);
+
+/*
+Converts from one RGB model to another RGB model.
+Similar to calling convertToXYZ followed by convertFromXYZ, but may be
+more efficient and more precise (e.g. no computation needed when both models
+are the same). See their documentation for more info.
+
+Parameters:
+
+*) out: output pixel data
+*) in: input pixel data
+*) w, h: image size
+*) state_out: output RGB color model in state_out->info_png and byte format in state_out->info_raw.
+*) state_in: output RGB color model in state_in->info_png and byte format in state_in->info_raw
+*) return value: 0 if ok, positive value if error
+*) rendering_intent: 1 for relative, 3 for absolute, should be relative for standard behavior.
+   See description at convertFromXYZ.
+*/
+unsigned convertRGBModel(unsigned char* out, const unsigned char* in,
+                         unsigned w, unsigned h,
+                         const LodePNGState* state_out,
+                         const LodePNGState* state_in,
+                         unsigned rendering_intent);
+
+/*
+Converts the RGB color to the absolute XYZ color space given the RGB color profile
+chunks in the PNG info.
+
+Color space here refers to the different possible RGB spaces with different
+possible chromaticities or whitepoint and XYZ color from colorimetry, not the
+LodePNGColorType that describes the byte based encoding.
+
+You need this function only if the PNG could contain data in an arbitrary RGB
+color space and you wish to output to a display or format that does not provide
+color management for you (so you need to convert rather than pass on the profile
+to it) but expects a certain RGB format (e.g. sRGB). See the background info below.
+
+Supports the gAMA, cHRM, sRGB and iCCP colorimetry chunks. If no colometry chunks are present
+(that is, in state->info_png, the fields gama_defined, chrm_defined, srgb_defined and
+iccp_defined are all 0), it assumes the format is sRGB.
+For more information, see the chunk specifications in the PNG specification.
+
+Some background:
+
+A PNG image contains RGB data inside, but this data may use a specific RGB model (by default sRGB but
+different if colorimetry chunks are given).
+The computer display and/or operating system can have another RGB model (typically sRGB, or wider gamut
+or HDR formats).
+
+The PNG chunks describe what format the data inside has, not the format of the display. To correctly
+display a PNG image on a display, a conversion is needed from the PNG model to the display model if their
+models differ. Some options to achieve that are:
+*) If your use case already supports color management on its own, you can give it the RGB values straight from
+   the PNG image and give it the information from the cHRM, gAMA, sRGB and iCCP chunks (which you can find
+   in the LodePNGInfo), and the color management should then handle it correctly for you. You don't need
+   this function here in that case.
+*) If your use case does not support color management, you may instead want to give it the RGB values in a
+   consistent color model, such as sRGB, but the PNG does not necessarily have it in this desired model.
+   In that case, use the function below (or a similar one from a CMS library if you prefer) to convert it to
+   the absolute color space XYZ, and then you can convert it to the target RGB with the counterpart convertFromXYZ
+   further below.
+
+Parameters:
+
+*) out: 4 floats per pixel, X,Y,Z,alpha color format, in range 0-1 (normally, not clipped if beyond), must
+   be allocated to have 4 * w * h floats available.
+*) whitepoint: output argument, the whitepoint the original RGB data used, given in absolute XYZ. Needed for
+   relative rendering intents: give these values to counterpart function convertFromXYZ.
+*) in: input RGB color, in byte format given by state->info_raw and RGB color profile given by info->info_png
+*) w, h: image size
+*) state (when using a LodePNG decode function that takes a LodePNGState parameter, can directly use that one):
+   state->info_png: PNG info with possibly an RGB color model in cHRM,gAMA and/or sRGB chunks
+   state->info_raw: byte format of in (amount of channels, bit depth)
+*) return value: 0 if ok, positive value if error
+*/
+unsigned convertToXYZ(float* out, float whitepoint[3],
+                      const unsigned char* in, unsigned w, unsigned h,
+                      const LodePNGState* state);
+
+/*
+Same as convertToXYZ but takes floating point input. Slower.
+The main black..white range in 0..1. Does not clip values that are outside that range.
+*/
+unsigned convertToXYZFloat(float* out, float whitepoint[3], const float* in,
+                           unsigned w, unsigned h, const LodePNGState* state);
+
+/*
+Converts XYZ to RGB in the RGB color model given by info and byte format by mode_out.
+If info has no coloremtry chunks, converts to sRGB.
+Parameters:
+*) out: output color in byte format given by state->info_raw and RGB color profile given
+   by info->info_png. Must have enough bytes allocated to contain pixels in the given byte format.
+*) in: 4 floats per pixel, X,Y,Z,alpha color format, in range 0-1 (normally).
+*) whitepoint: input argument, the original whitepoint in absolute XYZ that the pixel data
+   in "in" had back when it was in a previous RGB space. Needed to preserve the whitepoint
+   in the new target RGB space for relative rendering intent.
+*) rendering_intent: the desired rendering intent, with numeric meaning matching the
+   values used by ICC: 0=perceptual, 1=relative, 2=saturation, 3=absolute.
+   Should be 1 for normal use cases, it adapts white to match that of different RGB
+   models which is the best practice. Using 3 may change the color of white and may
+   turn grayscale into colors of a certain tone. Using 0 and 2 will have the same
+   effect as 1 because using those requires more data than the matrix-based RGB profiles
+   supporetd here have.
+*) w, h: image size
+*) state:
+   state->info_png: PNG info with possibly an RGB color profile in cHRM,gAMA and/or sRGB chunks
+   state->info_raw: byte format of out (amount of channels, bit depth)
+*) return value: 0 if ok, positive value if error
+*/
+unsigned convertFromXYZ(unsigned char* out, const float* in, unsigned w, unsigned h,
+                        const LodePNGState* state,
+                        const float whitepoint[3], unsigned rendering_intent);
+
+/*
+Same as convertFromXYZ but outputs the RGB colors in floating point.
+The main black..white range in 0..1. Does not clip values that are outside that range.
+*/
+unsigned convertFromXYZFloat(float* out, const float* in, unsigned w, unsigned h,
+                             const LodePNGState* state,
+                             const float whitepoint[3], unsigned rendering_intent);
+#endif /*LODEPNG_COMPILE_ANCILLARY_CHUNKS*/
+
 /*
 The information for extractZlibInfo.
 */
-struct ZlibBlockInfo
-{
+struct ZlibBlockInfo {
   int btype; //block type (0-2)
   size_t compressedbits; //size of compressed block in bits
   size_t uncompressedbytes; //size of uncompressed block in bytes
@@ -149,3 +286,5 @@ struct ZlibBlockInfo
 void extractZlibInfo(std::vector<ZlibBlockInfo>& zlibinfo, const std::vector<unsigned char>& in);
 
 } // namespace lodepng
+
+#endif /*LODEPNG_UTIL_H inclusion guard*/
