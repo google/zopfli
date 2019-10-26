@@ -1,5 +1,5 @@
 /*
-LodePNG version 20190914
+LodePNG version 20191020
 
 Copyright (c) 2005-2019 Lode Vandevenne
 
@@ -44,7 +44,7 @@ Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for
 #pragma warning( disable : 4996 ) /*VS does not like fopen, but fopen_s is not standard C so unusable here*/
 #endif /*_MSC_VER */
 
-const char* LODEPNG_VERSION_STRING = "20190914";
+const char* LODEPNG_VERSION_STRING = "20191020";
 
 /*
 This source file is built up in the following large parts. The code sections
@@ -2672,6 +2672,9 @@ unsigned lodepng_palette_add(LodePNGColorMode* info,
     lodepng_color_mode_alloc_palette(info);
     if(!info->palette) return 83; /*alloc fail*/
   }
+  if(info->palettesize >= 256) {
+    return 108; /*too many palette values*/
+  }
   info->palette[4 * info->palettesize + 0] = r;
   info->palette[4 * info->palettesize + 1] = g;
   info->palette[4 * info->palettesize + 2] = b;
@@ -3449,6 +3452,10 @@ unsigned lodepng_convert(unsigned char* out, const unsigned char* in,
   ColorTree tree;
   size_t numpixels = (size_t)w * (size_t)h;
   unsigned error = 0;
+
+  if(mode_in->colortype == LCT_PALETTE && !mode_in->palette) {
+    return 107; /* error: must provide palette if input mode is palette */
+  }
 
   if(lodepng_color_mode_equal(mode_out, mode_in)) {
     size_t numbytes = lodepng_get_raw_size(w, h, mode_in);
@@ -4814,6 +4821,11 @@ static void decodeGeneric(unsigned char** out, unsigned* w, unsigned* h,
     if(!IEND) chunk = lodepng_chunk_next_const(chunk);
   }
 
+  if (state->info_png.color.colortype == LCT_PALETTE
+      && !state->info_png.color.palette) {
+    state->error = 106; /* error: PNG file must have PLTE chunk if color type is palette */
+  }
+
   /*predict output size, to allocate exact size for output buffer to avoid more dynamic allocation.
   If the decompressed size does not match the prediction, the image must be corrupt.*/
   if(state->info_png.interlace_method == 0) {
@@ -4872,8 +4884,7 @@ unsigned lodepng_decode(unsigned char** out, unsigned* w, unsigned* h,
       state->error = lodepng_color_mode_copy(&state->info_raw, &state->info_png.color);
       if(state->error) return state->error;
     }
-  } else {
-    /*color conversion needed; sort of copy of the data*/
+  } else { /*color conversion needed*/
     unsigned char* data = *out;
     size_t outsize;
 
@@ -6110,6 +6121,9 @@ const char* lodepng_error_text(unsigned code) {
     case 103: return "invalid palette index in bKGD chunk. Maybe it came before PLTE chunk?";
     case 104: return "invalid bKGD color while encoding (e.g. palette index out of range)";
     case 105: return "integer overflow of bitsize";
+    case 106: return "PNG file must have PLTE chunk if color type is palette";
+    case 107: return "color convert from palette mode requested without setting the palette data in it";
+    case 108: return "tried to add more than 256 values to a palette";
   }
   return "unknown error code";
 }

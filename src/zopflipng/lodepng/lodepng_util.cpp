@@ -277,8 +277,14 @@ void* lodepng_malloc(size_t size);
 void lodepng_free(void* ptr);
 #endif /*LODEPNG_COMPILE_ALLOCATORS*/
 
-/* avoid needing <float.h> for FLT_MAX */
+/* avoid needing <float.h> for FLT_MAX. This assumes IEEE 32-bit float. */
 static const float lodepng_flt_max = 3.40282346638528859811704183484516925e38f;
+
+/* define infinity and NaN in a way compatible with ANSI C90 (no INFINITY or NAN macros) yet also with visual studio */
+/* visual studio doesn't allow division through zero literal, but allows it through variable set to zero */
+static const float lodepng_flt_zero_ = 0.0f;
+static const float lodepng_flt_inf = 1.0f / lodepng_flt_zero_; /* infinity */
+static const float lodepng_flt_nan = 0.0f / lodepng_flt_zero_; /* not a number */
 
 /* powf polyfill, 5-6 digits accurate, 33% slower than powf, assumes IEEE
 32-bit float, but other than that multiplatform and no math lib needed
@@ -296,11 +302,17 @@ static float lodepng_powf(float x, float y) {
     } else {
       if(!(y < -1073741824.0f || y > 1073741824.0f)) { /* large y always even integer, but cast would overflow */
         i = (int)y;
-        if(i != y) return (x < -lodepng_flt_max) ? (y < 0 ? 0 : (1 / 0.0f)) : (x == 0 ? (y < 0 ? 1 / 0.0f : 0) : (0 / 0.0f));
+        if(i != y) {
+          return (x < -lodepng_flt_max) ? (y < 0 ? 0 : lodepng_flt_inf) :
+              (x == 0 ? (y < 0 ? lodepng_flt_inf : 0) : lodepng_flt_nan);
+        }
         if(i & 1) return x == 0 ? (y < 0 ? (1 / x) : x) : -lodepng_powf(-x, y);
       }
-      if(x == 0) return y <= 0 ? (1 / 0.0f) : 0;
-      if(x < -lodepng_flt_max) return y <= 0 ? (y == 0 ? 1 : 0) : ((i & 1) ? (-1 / 0.0f) : (1 / 0.0f)); /* x = -infinity */
+      if(x == 0) return y <= 0 ? lodepng_flt_inf : 0;
+      if(x < -lodepng_flt_max) { /* x == -infinity */
+        return y <= 0 ? (y == 0 ? 1 : 0) : ((i & 1) ?
+            -lodepng_flt_inf : lodepng_flt_inf);
+      }
       x = -x;
       if(x == 1) return 1;
     }
@@ -319,7 +331,7 @@ static float lodepng_powf(float x, float y) {
 
   x *= y; /* using the formula exp2(y * log2(x)) */
 
-  if(!(x > -128.0f && x < 128.0f)) return x > 0 ? (1 / 0.0f) : 0; /* prevent int overflow */
+  if(!(x > -128.0f && x < 128.0f)) return x > 0 ? lodepng_flt_inf : 0; /* prevent int overflow */
   i = (int)x;
   x -= i;
   /* polynomial to approximate exp2(x) with x in range -1..1 */

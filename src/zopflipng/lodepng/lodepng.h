@@ -1,5 +1,5 @@
 /*
-LodePNG version 20190914
+LodePNG version 20191020
 
 Copyright (c) 2005-2019 Lode Vandevenne
 
@@ -335,9 +335,11 @@ typedef struct LodePNGColorMode {
   palette (PLTE and tRNS)
 
   Dynamically allocated with the colors of the palette, including alpha.
-  When encoding a PNG, to store your colors in the palette of the LodePNGColorMode, first use
-  lodepng_palette_clear, then for each color use lodepng_palette_add.
-  If you encode an image without alpha with palette, don't forget to put value 255 in each A byte of the palette.
+  This field may not be allocated directly, use lodepng_color_mode_init first,
+  then lodepng_palette_add per color to correctly initialize it (to ensure size
+  of exactly 1024 bytes).
+
+  The alpha channels must be set as well, set them to 255 for opaque images.
 
   When decoding, by default you can ignore this palette, since LodePNG already
   fills the palette colors in the pixels of the raw RGBA output.
