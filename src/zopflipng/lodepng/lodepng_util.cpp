@@ -281,8 +281,8 @@ void lodepng_free(void* ptr);
 static const float lodepng_flt_max = 3.40282346638528859811704183484516925e38f;
 
 /* define infinity and NaN in a way compatible with ANSI C90 (no INFINITY or NAN macros) yet also with visual studio */
-/* visual studio doesn't allow division through zero literal, but allows it through variable set to zero */
-static const float lodepng_flt_zero_ = 0.0f;
+/* visual studio doesn't allow division through a zero literal, but allows it through non-const variable set to zero */
+float lodepng_flt_zero_ = 0.0f;
 static const float lodepng_flt_inf = 1.0f / lodepng_flt_zero_; /* infinity */
 static const float lodepng_flt_nan = 0.0f / lodepng_flt_zero_; /* not a number */
 
