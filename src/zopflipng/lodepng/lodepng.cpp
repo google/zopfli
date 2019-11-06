@@ -1,5 +1,5 @@
 /*
-LodePNG version 20191020
+LodePNG version 20191105
 
 Copyright (c) 2005-2019 Lode Vandevenne
 
@@ -44,7 +44,7 @@ Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for
 #pragma warning( disable : 4996 ) /*VS does not like fopen, but fopen_s is not standard C so unusable here*/
 #endif /*_MSC_VER */
 
-const char* LODEPNG_VERSION_STRING = "20191020";
+const char* LODEPNG_VERSION_STRING = "20191105";
 
 /*
 This source file is built up in the following large parts. The code sections
@@ -693,11 +693,15 @@ static void HuffmanTree_cleanup(HuffmanTree* tree) {
 /* values 8u and 9u work the fastest */
 #define FIRSTBITS 9u
 
+/* a symbol value too big to represent any valid symbol, to indicate reading disallowed huffman bits combination,
+which is possible in case of only 0 or 1 present symbols. */
+#define INVALIDSYMBOL 65535u
+
 /* make table for huffman decoding */
 static unsigned HuffmanTree_makeTable(HuffmanTree* tree) {
   static const unsigned headsize = 1u << FIRSTBITS; /*size of the first table*/
   static const unsigned mask = (1u << FIRSTBITS) /*headsize*/ - 1u;
-  size_t i, pointer, size; /*total table size*/
+  size_t i, numpresent, pointer, size; /*total table size*/
   unsigned* maxlens = (unsigned*)lodepng_malloc(headsize * sizeof(unsigned));
   if(!maxlens) return 83; /*alloc fail*/
 
@@ -740,14 +744,16 @@ static unsigned HuffmanTree_makeTable(HuffmanTree* tree) {
   lodepng_free(maxlens);
 
   /*fill in the first table for short symbols, or secondary table for long symbols*/
+  numpresent = 0;
   for(i = 0; i < tree->numcodes; ++i) {
     unsigned l = tree->lengths[i];
     unsigned symbol = tree->codes[i]; /*the huffman bit pattern. i itself is the value.*/
     /*reverse bits, because the huffman bits are given in MSB first order but the bit reader reads LSB first*/
     unsigned reverse = reverseBits(symbol, l);
-    if(l == 0) {
-      continue;
-    } else if(l <= FIRSTBITS) {
+    if(l == 0) continue;
+    numpresent++;
+
+    if(l <= FIRSTBITS) {
       /*short symbol, fully in first table, replicated num times if l < FIRSTBITS*/
       unsigned num = 1u << (FIRSTBITS - l);
       unsigned j;
@@ -778,12 +784,27 @@ static unsigned HuffmanTree_makeTable(HuffmanTree* tree) {
     }
   }
 
-  /* A good huffman tree has N * 2 - 1 nodes, of which N - 1 are internal nodes.
-  If that is not the case (due to too long length codes), the table will not
-  have been fully used, and this is an error (not all bit combinations can be
-  decoded): an oversubscribed huffman tree, indicated by error 55. */
-  for(i = 0; i < size; ++i) {
-    if(tree->table_len[i] == 16) return 55;
+  if(numpresent < 2) {
+    /* In case of exactly 1 symbol, in theory the huffman symbol needs 0 bits,
+    but deflate uses 1 bit instead. In case of 0 symbols, no symbols can
+    appear at all, but such huffman tree could still exist (e.g. if distance
+    codes are never used). In both cases, not all symbols of the table will be
+    filled in. Fill them in with an invalid symbol value so returning them from
+    huffmanDecodeSymbol will cause error. */
+    for(i = 0; i < size; ++i) {
+      if(tree->table_len[i] == 16) {
+        tree->table_len[i] = 1;
+        tree->table_value[i] = INVALIDSYMBOL;
+      }
+    }
+  } else {
+    /* A good huffman tree has N * 2 - 1 nodes, of which N - 1 are internal nodes.
+    If that is not the case (due to too long length codes), the table will not
+    have been fully used, and this is an error (not all bit combinations can be
+    decoded): an oversubscribed huffman tree, indicated by error 55. */
+    for(i = 0; i < size; ++i) {
+      if(tree->table_len[i] == 16) return 55;
+    }
   }
 
   return 0;
@@ -1225,8 +1246,8 @@ static unsigned getTreeInflateDynamic(HuffmanTree* tree_ll, HuffmanTree* tree_d,
           else bitlen_d[i - HLIT] = 0;
           ++i;
         }
-      } else /*if(code == (unsigned)(-1))*/ /*huffmanDecodeSymbol returns (unsigned)(-1) in case of error*/ {
-        ERROR_BREAK(16); /*nonexistent code, this can never happen*/
+      } else /*if(code == INVALIDSYMBOL)*/ {
+        ERROR_BREAK(16); /*error: tried to read disallowed huffman symbol*/
       }
       /*check if any of the ensureBits above went out of bounds*/
       if(reader->bp > reader->bitsize) {
@@ -1298,12 +1319,10 @@ static unsigned inflateHuffmanBlock(ucvector* out, size_t* pos, LodePNGBitReader
       ensureBits32(reader, 28); /* up to 15 for the huffman symbol, up to 13 for the extra bits */
       code_d = huffmanDecodeSymbol(reader, &tree_d);
       if(code_d > 29) {
-        if(code_d == (unsigned)(-1)) /*huffmanDecodeSymbol returns (unsigned)(-1) in case of error*/ {
-          /*return error code 10 or 11 depending on the situation that happened in huffmanDecodeSymbol
-          (10=no endcode, 11=wrong jump outside of tree)*/
-          ERROR_BREAK((reader->bp > reader->bitsize) ? 10 : 11);
-        } else {
+        if(code_d <= 31) {
           ERROR_BREAK(18); /*error: invalid distance code (30-31 are never used)*/
+        } else /* if(code_d == INVALIDSYMBOL) */{
+          ERROR_BREAK(16); /*error: tried to read disallowed huffman symbol*/
         }
       }
       distance = DISTANCEBASE[code_d];
@@ -1334,8 +1353,8 @@ static unsigned inflateHuffmanBlock(ucvector* out, size_t* pos, LodePNGBitReader
       }
     } else if(code_ll == 256) {
       break; /*end code, break the loop*/
-    } else /*if(code == (unsigned)(-1))*/ /*huffmanDecodeSymbol returns (unsigned)(-1) in case of error*/ {
-      ERROR_BREAK(16) /* impossible */
+    } else /*if(code_ll == INVALIDSYMBOL)*/ {
+      ERROR_BREAK(16); /*error: tried to read disallowed huffman symbol*/
     }
     /*check if any of the ensureBits above went out of bounds*/
     if(reader->bp > reader->bitsize) {
@@ -6022,6 +6041,7 @@ const char* lodepng_error_text(unsigned code) {
     case 13: return "problem while processing dynamic deflate block";
     case 14: return "problem while processing dynamic deflate block";
     case 15: return "problem while processing dynamic deflate block";
+    /*this error could happen if there are only 0 or 1 symbols present in the huffman code:*/
     case 16: return "nonexistent code while processing dynamic deflate block";
     case 17: return "end of out buffer memory reached while inflating";
     case 18: return "invalid distance code while inflating";
