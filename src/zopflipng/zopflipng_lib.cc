@@ -203,13 +203,16 @@ unsigned TryOptimize(
       state.encoder.filter_strategy = LFS_BRUTE_FORCE;
       break;
     case kStrategyOne:
+      state.encoder.filter_strategy = LFS_ONE;
+      break;
     case kStrategyTwo:
+      state.encoder.filter_strategy = LFS_TWO;
+      break;
     case kStrategyThree:
+      state.encoder.filter_strategy = LFS_THREE;
+      break;
     case kStrategyFour:
-      // Set the filters of all scanlines to that number.
-      filters.resize(h, filterstrategy);
-      state.encoder.filter_strategy = LFS_PREDEFINED;
-      state.encoder.predefined_filters = &filters[0];
+      state.encoder.filter_strategy = LFS_FOUR;
       break;
     case kStrategyPredefined:
       lodepng::getFilterTypes(filters, origfile);
