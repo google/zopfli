@@ -1,5 +1,5 @@
 /*
-LodePNG version 20191105
+LodePNG version 20191107
 
 Copyright (c) 2005-2019 Lode Vandevenne
 
@@ -44,7 +44,7 @@ Rename this file to lodepng.cpp to use it for C++, or to lodepng.c to use it for
 #pragma warning( disable : 4996 ) /*VS does not like fopen, but fopen_s is not standard C so unusable here*/
 #endif /*_MSC_VER */
 
-const char* LODEPNG_VERSION_STRING = "20191105";
+const char* LODEPNG_VERSION_STRING = "20191107";
 
 /*
 This source file is built up in the following large parts. The code sections
@@ -793,7 +793,10 @@ static unsigned HuffmanTree_makeTable(HuffmanTree* tree) {
     huffmanDecodeSymbol will cause error. */
     for(i = 0; i < size; ++i) {
       if(tree->table_len[i] == 16) {
-        tree->table_len[i] = 1;
+        /* As length, use a value smaller than FIRSTBITS for the head table,
+        and a value larger than FIRSTBITS for the secondary table, to ensure
+        valid behavior for advanceBits when reading this symbol. */
+        tree->table_len[i] = (i < headsize) ? 1 : (FIRSTBITS + 1);
         tree->table_value[i] = INVALIDSYMBOL;
       }
     }
@@ -3854,7 +3857,7 @@ unsigned auto_choose_color(LodePNGColorMode* mode_out,
   palettebits = n <= 2 ? 1 : (n <= 4 ? 2 : (n <= 16 ? 4 : 8));
   palette_ok = n <= 256 && bits <= 8 && n != 0; /*n==0 means likely numcolors wasn't computed*/
   if(numpixels < n * 2) palette_ok = 0; /*don't add palette overhead if image has only a few pixels*/
-  if(gray_ok && bits <= palettebits) palette_ok = 0; /*gray is less overhead*/
+  if(gray_ok && !alpha && bits <= palettebits) palette_ok = 0; /*gray is less overhead*/
   if(!stats->allow_palette) palette_ok = 0;
 
   if(palette_ok) {
@@ -5348,6 +5351,16 @@ static size_t ilog2(size_t i) {
   return result;
 }
 
+/* integer approximation for i * log2(i), helper function for LFS_ENTROPY */
+static size_t ilog2i(size_t i) {
+  size_t l;
+  if(i == 0) return 0;
+  l = ilog2(i);
+  /* approximate i*log2(i): l is integer logarithm, ((i - (1u << l)) << 1u)
+  linearly approximates the missing fractional part multiplied by i */
+  return i * l + ((i - (1u << l)) << 1u);
+}
+
 static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, unsigned h,
                        const LodePNGColorMode* info, const LodePNGEncoderSettings* settings) {
   /*
@@ -5395,7 +5408,6 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
     }
   } else if(strategy == LFS_MINSUM) {
     /*adaptive filtering*/
-    size_t sum[5];
     unsigned char* attempt[5]; /*five filtering attempts, one for each filter type*/
     size_t smallest = 0;
     unsigned char type, bestType = 0;
@@ -5409,26 +5421,26 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
       for(y = 0; y != h; ++y) {
         /*try the 5 filter types*/
         for(type = 0; type != 5; ++type) {
+          size_t sum = 0;
           filterScanline(attempt[type], &in[y * linebytes], prevline, linebytes, bytewidth, type);
 
           /*calculate the sum of the result*/
-          sum[type] = 0;
           if(type == 0) {
-            for(x = 0; x != linebytes; ++x) sum[type] += (unsigned char)(attempt[type][x]);
+            for(x = 0; x != linebytes; ++x) sum += (unsigned char)(attempt[type][x]);
           } else {
             for(x = 0; x != linebytes; ++x) {
               /*For differences, each byte should be treated as signed, values above 127 are negative
               (converted to signed char). Filtertype 0 isn't a difference though, so use unsigned there.
               This means filtertype 0 is almost never chosen, but that is justified.*/
               unsigned char s = attempt[type][x];
-              sum[type] += s < 128 ? s : (255U - s);
+              sum += s < 128 ? s : (255U - s);
             }
           }
 
           /*check if this is smallest sum (or if type == 0 it's the first case so always store the values)*/
-          if(type == 0 || sum[type] < smallest) {
+          if(type == 0 || sum < smallest) {
             bestType = type;
-            smallest = sum[type];
+            smallest = sum;
           }
         }
 
@@ -5442,7 +5454,6 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
 
     for(type = 0; type != 5; ++type) lodepng_free(attempt[type]);
   } else if(strategy == LFS_ENTROPY) {
-    size_t sum[5];
     unsigned char* attempt[5]; /*five filtering attempts, one for each filter type*/
     size_t bestSum = 0;
     unsigned type, bestType = 0;
@@ -5456,18 +5467,18 @@ static unsigned filter(unsigned char* out, const unsigned char* in, unsigned w, 
     for(y = 0; y != h; ++y) {
       /*try the 5 filter types*/
       for(type = 0; type != 5; ++type) {
+        size_t sum = 0;
         filterScanline(attempt[type], &in[y * linebytes], prevline, linebytes, bytewidth, type);
         for(x = 0; x != 256; ++x) count[x] = 0;
         for(x = 0; x != linebytes; ++x) ++count[attempt[type][x]];
         ++count[type]; /*the filter type itself is part of the scanline*/
-        sum[type] = 0;
         for(x = 0; x != 256; ++x) {
-          sum[type] += count[x] == 0 ? 0 : ilog2(count[x]) * count[x];
+          sum += ilog2i(count[x]);
         }
         /*check if this is smallest sum (or if type == 0 it's the first case so always store the values)*/
-        if(type == 0 || sum[type] > bestSum) {
+        if(type == 0 || sum > bestSum) {
           bestType = type;
-          bestSum = sum[type];
+          bestSum = sum;
         }
       }
 
