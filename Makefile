@@ -42,7 +42,7 @@ zopfli: $(ZOPFLILIB_OBJ) $(ZOPFLIBIN_OBJ)
 
 # Zopfli shared library
 libzopfli: $(ZOPFLILIB_OBJ)
-	$(CC) $^ $(CFLAGS) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.2 $(LDFLAGS)
+	$(CC) $^ $(CFLAGS) -shared -Wl,-soname,libzopfli.so.1 -o libzopfli.so.1.0.3 $(LDFLAGS)
 
 # Zopfli static library
 libzopfli.a: $(ZOPFLILIB_OBJ)
@@ -54,7 +54,7 @@ zopflipng: $(ZOPFLILIB_OBJ) $(LODEPNG_OBJ) $(ZOPFLIPNGLIB_OBJ) $(ZOPFLIPNGBIN_OB
 
 # ZopfliPNG shared library
 libzopflipng: $(ZOPFLILIB_OBJ) $(LODEPNG_OBJ) $(ZOPFLIPNGLIB_OBJ)
-	$(CXX) $^ $(CFLAGS) --shared -Wl,-soname,libzopflipng.so.1 -o libzopflipng.so.1.0.2 $(LDFLAGS)
+	$(CXX) $^ $(CFLAGS) --shared -Wl,-soname,libzopflipng.so.1 -o libzopflipng.so.1.0.3 $(LDFLAGS)
 
 # ZopfliPNG static library
 libzopflipng.a: $(LODEPNG_OBJ) $(ZOPFLIPNGLIB_OBJ)
