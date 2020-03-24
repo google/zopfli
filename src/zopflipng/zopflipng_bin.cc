@@ -125,6 +125,13 @@ void ShowHelp() {
          " web images because web browsers do not use these chunks. By default"
          " ZopfliPNG only keeps (and losslessly modifies) the following chunks"
          " because they are essential: IHDR, PLTE, tRNS, IDAT and IEND.\n"
+         "--keepcolortype: Keep original color type (RGB, RGBA, gray,"
+         " gray+alpha or palette) and bit depth of the PNG.\n"
+         " This results in a loss of compression opportunities, e.g. it will no"
+         " longer convert a 4-channel RGBA image to 2-channel gray+alpha if the"
+         " image only had translucent gray pixels.\n"
+         " May be useful if a device does not support decoding PNGs of a"
+         " particular color type.\n"
          "\n"
          "Usage examples:\n"
          "Optimize a file and overwrite if smaller: zopflipng infile.png"
@@ -239,6 +246,8 @@ int main(int argc, char *argv[]) {
                  " --keepchunks=gAMA,cHRM,sRGB,iCCP\n");
           return 0;
         }
+      } else if (name == "--keepcolortype") {
+        png_options.keep_colortype = true;
       } else if (name == "--prefix") {
         use_prefix = true;
         if (!value.empty()) prefix = value;

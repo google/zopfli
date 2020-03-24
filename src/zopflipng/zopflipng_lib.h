@@ -105,6 +105,16 @@ struct ZopfliPNGOptions {
   // Automatically choose filter strategy using less good compression
   bool auto_filter_strategy;
 
+  // Keep original color type (RGB, RGBA, gray, gray+alpha or palette) and bit
+  // depth of the PNG.
+  // This results in a loss of compression opportunities, e.g. it will no
+  // longer convert a 4-channel RGBA image to 2-channel gray+alpha if the image
+  // only had translucent gray pixels.
+  // May be useful if a device does not support decoding PNGs of a particular
+  // color type.
+  // Default value: false.
+  bool keep_colortype;
+
   // PNG chunks to keep
   // chunks to literally copy over from the original PNG to the resulting one
   std::vector<std::string> keepchunks;
