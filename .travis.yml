@@ -1,0 +1,14 @@
+language: cpp
+
+os: linux
+
+compiler:
+  - clang
+  - gcc
+
+env:
+ - target=zopfli
+ - target=zopflipng
+
+script:
+ - make $target
