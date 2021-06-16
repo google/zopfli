@@ -1,9 +1,9 @@
-ZopfliPNG is a command line program to optimize the Portable Network Graphics
+ZopfliPNG is a command line program to optimize Portable Network Graphics
 (PNG) images. This version has the following features:
-- uses Zopfli compression for the Deflate compression,
+- uses the Zopfli compression for Deflate compression,
 - compares several strategies for choosing scanline filter codes,
 - chooses a suitable color type to losslessly encode the image,
-- removes all chunks that are unimportant for the typical web use (metadata,
+- removes all chunks that are unimportant for typical web use (metadata,
   text, etc...),
 - optionally alters the hidden colors of fully transparent pixels for more
   compression, and,
@@ -16,7 +16,7 @@ Important:
 
 This PNG optimizer removes ancillary chunks (pieces of metadata) from the
 PNG image that normally do not affect rendering. However in special
-circumstances you may wish to keep some. For example for a design using
+circumstances you may wish to keep some. For example in a design using
 custom gamma correction, keeping it may be desired. Visually check in the
 target renderer after using ZopfliPNG. Use --keepchunks to keep chunks, e.g.
 --keepchunks=gAMA,pHYs to keep gamma and DPI information. This will increase
