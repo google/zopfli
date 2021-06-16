@@ -27,6 +27,8 @@ Author: jyrki.alakuijala@gmail.com (Jyrki Alakuijala)
 extern "C" {
 #endif
 
+#define ZOPFLI_VERSION "1.0.1"
+
 /*
 Options used throughout the program.
 */
