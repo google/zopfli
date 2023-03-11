@@ -35,6 +35,7 @@ decompressor.
 
 /* Windows workaround for stdout output. */
 #if _WIN32
+#include <io.h>	
 #include <fcntl.h>
 #endif
 
