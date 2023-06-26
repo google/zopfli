@@ -1,0 +1,5 @@
+"Bazel module declaration"
+module(
+    name = "zopfli",
+    version = "1.0.3",
+)
