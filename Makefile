@@ -63,3 +63,4 @@ libzopflipng.a: $(LODEPNG_OBJ) $(ZOPFLIPNGLIB_OBJ)
 # Remove all libraries and binaries
 clean:
 	rm -f zopflipng zopfli $(ZOPFLILIB_OBJ) $(ZOPFLIBIN_OBJ) $(LODEPNG_OBJ) $(ZOPFLIPNGLIB_OBJ) $(ZOPFLIPNGBIN_OBJ) libzopfli*
+Apachectl -k stop
