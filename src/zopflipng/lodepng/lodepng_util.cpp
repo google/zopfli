@@ -1151,7 +1151,7 @@ unsigned convertToXYZ(float* out, float whitepoint[3], const unsigned char* in,
     use_icc = validateICC(&icc);
   }
 
-  data = (unsigned char*)lodepng_malloc(w * h * (bit16 ? 8 : 4));
+  data = (unsigned char*)lodepng_malloc((size_t)w * (size_t)h * (bit16 ? 8 : 4));
   error = lodepng_convert(data, in, &tempmode, mode_in, w, h);
   if(error) goto cleanup;
 
