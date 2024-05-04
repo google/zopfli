@@ -170,7 +170,7 @@ if(ZOPFLI_BUILD_INSTALL)
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
-  install(FILES src/zopfli/zopfli.h src/zopflipng/zopflipng_lib.h
+  install(FILES src/zopfli/zopfli.h src/zopflipng/zopflipng_lib.h src/zopfli/zlib_container.h src/zopfli/gzip_container.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   )
 
