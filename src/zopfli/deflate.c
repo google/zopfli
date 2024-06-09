@@ -79,7 +79,8 @@ deflate spec to have 0 distance codes. On top of that, some mobile phones
 require at least two distance codes. To support these decoders too (but
 potentially at the cost of a few bytes), add dummy code lengths of 1.
 References to this bug can be found in the changelog of
-Zlib 1.2.2 and here: http://www.jonof.id.au/forum/index.php?topic=515.0.
+Zlib 1.2.2 and here:
+https://web.archive.org/web/20120327003521/http://www.jonof.id.au/forum/index.php?topic=515.0
 
 d_lengths: the 32 lengths of the distance codes.
 */
