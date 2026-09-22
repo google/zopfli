@@ -343,8 +343,6 @@ static void FollowPath(ZopfliBlockState* s,
   size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
       ? instart - ZOPFLI_WINDOW_SIZE : 0;
 
-  size_t total_length_test = 0;
-
   if (instart == inend) return;
 
   ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h);
@@ -371,11 +369,9 @@ static void FollowPath(ZopfliBlockState* s,
       assert(!(dummy_length != length && length > 2 && dummy_length > 2));
       ZopfliVerifyLenDist(in, inend, pos, dist, length);
       ZopfliStoreLitLenDist(length, dist, pos, store);
-      total_length_test += length;
     } else {
       length = 1;
       ZopfliStoreLitLenDist(in[pos], 0, pos, store);
-      total_length_test++;
     }
 
 
