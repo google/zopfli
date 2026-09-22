@@ -475,6 +475,7 @@ extern "C" void CZopfliPNGSetDefaults(CZopfliPNGOptions* png_options) {
   png_options->lossy_transparent    = opts.lossy_transparent;
   png_options->lossy_8bit           = opts.lossy_8bit;
   png_options->auto_filter_strategy = opts.auto_filter_strategy;
+  png_options->keep_colortype       = opts.keep_colortype;
   png_options->use_zopfli           = opts.use_zopfli;
   png_options->num_iterations       = opts.num_iterations;
   png_options->num_iterations_large = opts.num_iterations_large;
@@ -493,6 +494,7 @@ extern "C" int CZopfliPNGOptimize(const unsigned char* origpng,
   opts.lossy_transparent    = !!png_options->lossy_transparent;
   opts.lossy_8bit           = !!png_options->lossy_8bit;
   opts.auto_filter_strategy = !!png_options->auto_filter_strategy;
+  opts.keep_colortype       = !!png_options->keep_colortype;
   opts.use_zopfli           = !!png_options->use_zopfli;
   opts.num_iterations       = png_options->num_iterations;
   opts.num_iterations_large = png_options->num_iterations_large;
