@@ -52,3 +52,16 @@ suitable plugins for other browsers, it is good to note that WebP lossless
 images are still 26 % smaller than images recompressed with ZopfliPNG.
 
 2013-05-07, Lode Vandevenne and Jyrki Alakuijala
+
+Building zopfli - Using vcpkg
+
+The url of vcpkg is: https://github.com/Microsoft/vcpkg
+You can download and install zopfli using the vcpkg dependency manager:
+
+    git clone https://github.com/Microsoft/vcpkg.git
+    cd vcpkg
+    ./bootstrap-vcpkg.sh
+    ./vcpkg integrate install
+    ./vcpkg install zopfli
+
+The zopfli port in vcpkg is kept up to date by Microsoft team members and community contributors. If the version is out of date, please create an issue or pull request on the vcpkg repository.
