@@ -6,6 +6,7 @@
 //! in 100% pure safe Rust with exact equivalence to the original C-Zopfli logic.
 
 use crate::blocksplitter;
+use crate::cache::ZopfliLongestMatchCache;
 use crate::error::Error;
 use crate::lz77::{Lz77Store, UninitializedLz77Store, ZopfliBlockState};
 use crate::squeeze;
@@ -386,7 +387,12 @@ fn add_lz77_block_auto_type(
     if expensivefixed {
         let instart = lz77.pos[lstart] as usize;
         let inend = instart + squeeze::lz77_get_byte_range(&lz77.as_view(), lstart, lend);
-        let mut s = ZopfliBlockState { options, lmc: None, blockstart: instart, blockend: inend };
+        let mut s = ZopfliBlockState {
+            options,
+            lmc: Some(ZopfliLongestMatchCache::new(inend - instart)),
+            blockstart: instart,
+            blockend: inend,
+        };
         squeeze::lz77_optimal_fixed(&mut s, lz77.data, instart, inend, &mut fixedstore);
         fixedcost =
             squeeze::calculate_block_size(
@@ -446,7 +452,12 @@ pub fn deflate_part(
         return Ok(());
     } else if btype == BlockType::FixedTree {
         let mut store = UninitializedLz77Store::new().initialize(in_data);
-        let mut s = ZopfliBlockState { options, lmc: None, blockstart: instart, blockend: inend };
+        let mut s = ZopfliBlockState {
+            options,
+            lmc: Some(ZopfliLongestMatchCache::new(inend - instart)),
+            blockstart: instart,
+            blockend: inend,
+        };
         squeeze::lz77_optimal_fixed(&mut s, in_data, instart, inend, &mut store);
         add_lz77_block(
             options,
@@ -480,7 +491,12 @@ pub fn deflate_part(
     for i in 0..=npoints {
         let start = if i == 0 { instart } else { splitpoints_uncompressed[i - 1] };
         let end = if i == npoints { inend } else { splitpoints_uncompressed[i] };
-        let mut s = ZopfliBlockState { options, lmc: None, blockstart: start, blockend: end };
+        let mut s = ZopfliBlockState {
+            options,
+            lmc: Some(ZopfliLongestMatchCache::new(end - start)),
+            blockstart: start,
+            blockend: end,
+        };
         let mut store = UninitializedLz77Store::new().initialize(in_data);
         squeeze::lz77_optimal(
             &mut s,
