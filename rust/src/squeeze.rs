@@ -686,7 +686,7 @@ pub fn get_best_lengths<'a>(
             let symbolcost = cost_model.get_cost(crate::util::MAX_MATCH, 1);
             for _k in 0..crate::util::MAX_MATCH {
                 let next_j = j + crate::util::MAX_MATCH;
-                costs[next_j] = costs[j] + symbolcost as f32;
+                costs[next_j] = (costs[j] as f64 + symbolcost) as f32;
                 length_array[next_j] = crate::util::MAX_MATCH as u16;
                 i += 1;
                 j += 1;
