@@ -1,0 +1,22 @@
+cc_library(
+    # Named to produce "libzopfli.{a,so}"
+    # avoiding https://github.com/bazelbuild/bazel-central-registry/issues/716
+    name = "zopfli",
+    srcs = glob(["src/zopfli/*.c"], exclude = ["**/*_bin.c"]),
+    hdrs = glob(["src/zopfli/*.h"]),
+    # From the README:
+    #     Build instructions:
+    linkopts = ["-lm"],
+    strip_include_prefix = "src/",
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "bin",
+    srcs = ["src/zopfli/zopfli_bin.c"],
+    # To build zopfli, compile all .c source files under src/zopfli to a single binary
+    # with C, and link to the standard C math library, e.g.:
+    # gcc src/zopfli/*.c -O2 -W -Wall -Wextra -Wno-unused-function -ansi -pedantic -lm -o zopfli
+    copts = ["-O2", "-W", "-Wall", "-Wextra", "-Wno-unused-function", "-ansi", "-pedantic"],
+    deps = [":zopfli"],
+)
