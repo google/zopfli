@@ -62,7 +62,7 @@ Set it to 0 to disable master blocks.
 /*
 Used to initialize costs for example
 */
-#define ZOPFLI_LARGE_FLOAT 1e30
+#define ZOPFLI_LARGE_FLOAT 1e30f
 
 /*
 For longest match cache. max 256. Uses huge amounts of memory but makes it
