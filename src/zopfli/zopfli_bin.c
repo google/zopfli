@@ -141,6 +141,10 @@ static char StringsEqual(const char* str1, const char* str2) {
   return strcmp(str1, str2) == 0;
 }
 
+static void ShowVersion() {
+  fprintf(stderr, "zopfli version %s\n", ZOPFLI_VERSION);
+}
+
 int main(int argc, char* argv[]) {
   ZopfliOptions options;
   ZopfliFormat output_type = ZOPFLI_FORMAT_GZIP;
@@ -178,9 +182,18 @@ int main(int argc, char* argv[]) {
           "  --gzip        output to gzip format (default)\n"
           "  --zlib        output to zlib format instead of gzip\n"
           "  --deflate     output to deflate format instead of gzip\n"
-          "  --splitlast   ignored, left for backwards compatibility\n");
+          "  --splitlast   ignored, left for backwards compatibility\n"
+          "  --version     show version and exit\n");
       return 0;
     }
+    else if (StringsEqual(arg, "--version")) {
+      ShowVersion();
+      return 0;
+    }
+  }
+
+  if (options.verbose) {
+    ShowVersion();
   }
 
   if (options.numiterations < 1) {
