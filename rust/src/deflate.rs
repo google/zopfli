@@ -29,8 +29,8 @@ fn add_bit(bit: u8, bp: &mut u8, out: &mut Vec<u8>) {
         out.push(0);
     }
     let last_idx = out.len() - 1;
-    out[last_idx] |= bit << *bp;
-    *bp = (*bp + 1) & 7;
+    out[last_idx] |= (bit as u32).wrapping_shl(*bp as u32) as u8;
+    *bp = bp.wrapping_add(1) & 7;
 }
 
 /// Appends multiple bits to the output bitstream (LSB first).

@@ -493,7 +493,7 @@ unsafe fn deflate_helper<F>(
     let in_slice = unsafe { slice_from_c_raw_parts(in_data, in_len) };
     // SAFETY: Output buffer validity guaranteed by caller safety contract.
     let mut c_buffer = unsafe { CBuffer::from_raw(*out, *outsize) };
-    let old_bp = *bp & 7;
+    let old_bp = *bp;
 
     let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| -> Result<(Vec<u8>, u8), ()> {
         let safe_opts = options.to_safe();
