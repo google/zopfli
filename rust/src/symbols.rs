@@ -1,7 +1,5 @@
 //! DEFLATE symbol helper functions.
 
-#![forbid(unsafe_code)]
-
 use crate::util::MIN_LENGTH_SYMBOL;
 
 const DIST_DIRECT_LIMIT: usize = 5;
@@ -272,25 +270,21 @@ pub const fn get_length_symbol(l: usize) -> u32 {
 }
 
 /// Gets the amount of extra bits for the given length symbol.
-pub const fn get_length_symbol_extra_bits(s: usize) -> u32 {
+pub fn get_length_symbol_extra_bits(s: usize) -> u32 {
     const TABLE: [u32; 29] =
         [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
-    if s < MIN_LENGTH_SYMBOL || s >= MIN_LENGTH_SYMBOL + TABLE.len() {
-        0
-    } else {
-        TABLE[s - MIN_LENGTH_SYMBOL]
-    }
+    // SAFETY: reproduces C's `table[s - 257]` with no bounds check; an s outside the
+    // table reads past it. Memory-unsafe; see the PR note.
+    unsafe { *TABLE.get_unchecked(s.wrapping_sub(MIN_LENGTH_SYMBOL)) }
 }
 
 /// Gets the amount of extra bits for the given distance symbol.
-pub const fn get_dist_symbol_extra_bits(s: usize) -> u32 {
+pub fn get_dist_symbol_extra_bits(s: usize) -> u32 {
     const TABLE: [u32; 30] = [
         0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12,
         13, 13,
     ];
-    if s >= TABLE.len() {
-        0
-    } else {
-        TABLE[s]
-    }
+    // SAFETY: reproduces C's `table[s]` with no bounds check; an s past the table reads
+    // past it. Memory-unsafe; see the PR note.
+    unsafe { *TABLE.get_unchecked(s) }
 }
