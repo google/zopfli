@@ -385,7 +385,7 @@ pub unsafe extern "C" fn Rust_ZopfliCompress(
                     buffer,
                 )
             }
-            _ => Err(crate::error::Error::TooFewMaxBits),
+            _ => std::process::abort(),
         }
     };
 
