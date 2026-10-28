@@ -293,13 +293,12 @@ pub unsafe extern "C" fn Rust_ZopfliCleanLZ77Store(store: Option<&mut CZopfliLZ7
     if let Some(store) = store {
         // SAFETY: Pointers were allocated via malloc/realloc per caller contract.
         unsafe {
-            free_c_ptr(&mut store.litlens);
-            free_c_ptr(&mut store.dists);
-            free_c_ptr(&mut store.pos);
-            free_c_ptr(&mut store.ll_counts);
-            free_c_ptr(&mut store.d_counts);
+            libc::free(store.litlens as *mut libc::c_void);
+            libc::free(store.dists as *mut libc::c_void);
+            libc::free(store.pos as *mut libc::c_void);
+            libc::free(store.ll_counts as *mut libc::c_void);
+            libc::free(store.d_counts as *mut libc::c_void);
         }
-        store.size = 0;
     }
 }
 
