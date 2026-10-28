@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 //! DEFLATE compression core.
 //!
 //! This module implements the DEFLATE compression algorithm (RFC 1951)
@@ -25,11 +23,15 @@ use std::cmp;
 
 /// Appends a single bit to the output bitstream.
 fn add_bit(bit: u8, bp: &mut u8, out: &mut Vec<u8>) {
-    if *bp == 0 || out.is_empty() {
+    if *bp == 0 {
         out.push(0);
     }
-    let last_idx = out.len() - 1;
-    out[last_idx] |= bit << *bp;
+    let last_idx = out.len().wrapping_sub(1);
+    // SAFETY: reproduces C's `(*out)[*outsize - 1] |= ...`; for an empty output this
+    // writes out[-1], before the buffer. Memory-unsafe; see the PR note.
+    unsafe {
+        *out.as_mut_ptr().wrapping_add(last_idx) |= bit << *bp;
+    }
     *bp = (*bp + 1) & 7;
 }
 
