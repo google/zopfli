@@ -161,7 +161,7 @@ impl<'a> Lz77StoreView<'a> {
             return;
         }
 
-        if lstart + NUM_LL * 3 > lend || self.ll_counts.is_empty() || self.d_counts.is_empty() {
+        if lstart.wrapping_add(NUM_LL * 3) > lend || self.ll_counts.is_empty() || self.d_counts.is_empty() {
             ll_counts.fill(0);
             d_counts.fill(0);
             for (&dist, &litlen) in self.dists[lstart..lend].iter().zip(&self.litlens[lstart..lend])

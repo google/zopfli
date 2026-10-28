@@ -402,7 +402,7 @@ pub fn calculate_block_symbol_size_given_counts(
     lstart: usize,
     lend: usize,
 ) -> usize {
-    if lstart + NUM_LL * 3 > lend {
+    if lstart.wrapping_add(NUM_LL * 3) > lend {
         calculate_block_symbol_size_small(ll_lengths, d_lengths, store, lstart, lend)
     } else {
         let mut result = 0;
@@ -431,7 +431,7 @@ pub fn calculate_block_symbol_size(
     lstart: usize,
     lend: usize,
 ) -> usize {
-    if lstart + NUM_LL * 3 > lend {
+    if lstart.wrapping_add(NUM_LL * 3) > lend {
         calculate_block_symbol_size_small(ll_lengths, d_lengths, store, lstart, lend)
     } else {
         let mut ll_counts = [0usize; NUM_LL];

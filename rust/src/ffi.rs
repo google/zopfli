@@ -609,6 +609,27 @@ pub unsafe extern "C" fn Rust_ZopfliDeflatePart(
     }
 }
 
+/// Borrows a `CZopfliLZ77Store` over the range `[lstart, lend)` with no bounds check, so
+/// an `lstart`/`lend` past `size` reads past the store exactly as C's `lz77->field[i]`
+/// does. Memory-unsafe (reproduces C's undefined behaviour): the slices span past the
+/// real allocation. Must not be merged; see the PR note.
+unsafe fn oob_view<'a>(lz77: &CZopfliLZ77Store, lstart: usize, lend: usize) -> Lz77StoreView<'a> {
+    let n = lend.max(lstart.wrapping_add(1)).max(lz77.size);
+    let ll_n = NUM_LL * (n / NUM_LL + 1);
+    let d_n = NUM_D * (n / NUM_D + 1);
+    // SAFETY: the pointers are the caller's store; the lengths cover C's accessed range.
+    unsafe {
+        Lz77StoreView {
+            litlens: slice::from_raw_parts(lz77.litlens, n),
+            dists: slice::from_raw_parts(lz77.dists, n),
+            pos: slice::from_raw_parts(lz77.pos, n),
+            data: &[],
+            ll_counts: slice::from_raw_parts(lz77.ll_counts, ll_n),
+            d_counts: slice::from_raw_parts(lz77.d_counts, d_n),
+        }
+    }
+}
+
 /// Calculates block size in bits.
 ///
 /// # Safety
@@ -626,17 +647,10 @@ pub unsafe extern "C" fn Rust_ZopfliCalculateBlockSize(
     let Some(lz77) = lz77 else {
         return 0.0;
     };
-    if lstart > lend || lend > lz77.size {
-        return 0.0;
-    }
-    let block_type = match btype {
-        0..=2 => btype,
-        _ => return 0.0,
-    };
     let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| -> f64 {
-        // SAFETY: `lz77` validity is guaranteed by the caller safety contract.
-        let view = unsafe { lz77.as_view() };
-        squeeze::calculate_block_size(&view, lstart, lend, block_type)
+        // SAFETY: reproduces C's out-of-range reads; see the `oob_view` note.
+        let view = unsafe { oob_view(lz77, lstart, lend) };
+        squeeze::calculate_block_size(&view, lstart, lend, btype)
     }));
     caught.unwrap_or(0.0)
 }
@@ -657,12 +671,9 @@ pub unsafe extern "C" fn Rust_ZopfliCalculateBlockSizeAutoType(
     let Some(lz77) = lz77 else {
         return 0.0;
     };
-    if lstart > lend || lend > lz77.size {
-        return 0.0;
-    }
     let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| -> f64 {
-        // SAFETY: `lz77` validity is guaranteed by the caller safety contract.
-        let view = unsafe { lz77.as_view() };
+        // SAFETY: reproduces C's out-of-range reads; see the `oob_view` note.
+        let view = unsafe { oob_view(lz77, lstart, lend) };
         squeeze::calculate_block_size_auto_type(&view, lstart, lend)
     }));
     caught.unwrap_or(0.0)
