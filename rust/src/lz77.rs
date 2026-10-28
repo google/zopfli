@@ -579,12 +579,12 @@ pub fn lz77_greedy(
     let mut prev_match = 0;
     let mut match_available = false;
 
+    let window_size = crate::util::WINDOW_SIZE;
+    let mut hash = crate::hash::ZopfliHash::new(window_size);
     if instart == inend {
         return;
     }
 
-    let window_size = crate::util::WINDOW_SIZE;
-    let mut hash = crate::hash::ZopfliHash::new(window_size);
     let windowstart = if instart > window_size { instart - window_size } else { 0 };
 
     hash.warmup(in_data, windowstart, inend);

@@ -651,6 +651,8 @@ pub fn get_best_lengths<'a>(
     length_array: &mut [u16],
 ) -> f64 {
     let blocksize = inend - instart;
+    let window_size = crate::util::WINDOW_SIZE;
+    let mut hash = crate::hash::ZopfliHash::new(window_size);
     if instart == inend {
         return 0.0;
     }
@@ -659,8 +661,6 @@ pub fn get_best_lengths<'a>(
     costs[0] = 0.0;
     length_array[0] = 0;
 
-    let window_size = crate::util::WINDOW_SIZE;
-    let mut hash = crate::hash::ZopfliHash::new(window_size);
     let windowstart = if instart > window_size { instart - window_size } else { 0 };
 
     hash.warmup(in_data, windowstart, inend);
