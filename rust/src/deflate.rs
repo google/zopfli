@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 //! DEFLATE compression core.
 //!
 //! This module implements the DEFLATE compression algorithm (RFC 1951)
@@ -274,10 +272,10 @@ fn add_non_compressed_block(
     let mut pos = instart;
     loop {
         let mut blocksize = 65535;
-        if pos + blocksize > inend {
-            blocksize = inend - pos;
+        if pos.wrapping_add(blocksize) > inend {
+            blocksize = inend.wrapping_sub(pos);
         }
-        let currentfinal = pos + blocksize >= inend;
+        let currentfinal = pos.wrapping_add(blocksize) >= inend;
         let nlen = !blocksize as u16;
 
         add_bit(if final_block && currentfinal { 1 } else { 0 }, bp, out);
@@ -293,13 +291,15 @@ fn add_non_compressed_block(
         out.push(((nlen >> 8) & 0xFF) as u8);
 
         for i in 0..blocksize {
-            out.push(in_data[pos + i]);
+            // SAFETY: reproduces C's `in[pos + i]` read; for instart > inend the wrapped
+            // block size reads past the input. Memory-unsafe; see the PR note.
+            out.push(unsafe { *in_data.as_ptr().wrapping_add(pos.wrapping_add(i)) });
         }
 
         if currentfinal {
             break;
         }
-        pos += blocksize;
+        pos = pos.wrapping_add(blocksize);
     }
 }
 

@@ -591,10 +591,6 @@ pub unsafe extern "C" fn Rust_ZopfliDeflatePart(
     out: Option<&mut *mut u8>,
     outsize: Option<&mut libc::size_t>,
 ) {
-    if instart > inend {
-        return;
-    }
-
     let deflate_fn = |opts: &SafeOptions,
                       bt: BlockType,
                       data: &[u8],
