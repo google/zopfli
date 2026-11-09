@@ -82,7 +82,7 @@ pub const WINDOW_SIZE: usize = 32768;
 pub const WINDOW_MASK: usize = WINDOW_SIZE - 1;
 
 /// A block structure size to divide the input into.
-pub const MACRO_BLOCK_SIZE: usize = 262144;
+pub const MACRO_BLOCK_SIZE: usize = 1000000;
 
 /// Used to initialize costs.
 pub const LARGE_FLOAT: f64 = 1e30;
