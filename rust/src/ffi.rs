@@ -5,12 +5,13 @@
 use std::cmp;
 use std::ffi::c_int;
 use std::mem::ManuallyDrop;
+use std::ops::{Index, IndexMut};
 use std::panic;
 use std::process;
 use std::ptr;
 use std::slice;
 
-use crate::deflate::{deflate, deflate_part};
+use crate::deflate::{deflate, deflate_part, OutBuffer};
 use crate::gzip_container::gzip_compress;
 use crate::lz77::Lz77StoreView;
 use crate::squeeze;
@@ -217,16 +218,35 @@ impl CBuffer {
         }
     }
 
-    /// Length in bytes.
-    fn len(&self) -> usize {
-        self.len
-    }
-
     /// Relinquishes ownership back to the C caller pointers.
     fn into_raw(self, out: &mut *mut u8, outsize: &mut libc::size_t) {
         let this = ManuallyDrop::new(self);
         *out = this.ptr;
         *outsize = this.len;
+    }
+}
+
+impl OutBuffer for CBuffer {
+    fn push(&mut self, byte: u8) {
+        self.extend_from_slice(&[byte]);
+    }
+
+    fn len(&self) -> usize {
+        self.len
+    }
+}
+
+impl Index<usize> for CBuffer {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &u8 {
+        &self.as_slice()[index]
+    }
+}
+
+impl IndexMut<usize> for CBuffer {
+    fn index_mut(&mut self, index: usize) -> &mut u8 {
+        &mut self.as_mut_slice()[index]
     }
 }
 
@@ -468,7 +488,7 @@ unsafe fn deflate_helper<F>(
             BlockType,
             &[u8],
             &mut u8,
-            &mut Vec<u8>,
+            &mut CBuffer,
         ) -> Result<(), crate::error::Error>
         + std::panic::UnwindSafe,
 {
@@ -495,41 +515,22 @@ unsafe fn deflate_helper<F>(
     let mut c_buffer = unsafe { CBuffer::from_raw(*out, *outsize) };
     let old_bp = *bp & 7;
 
-    let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| -> Result<(Vec<u8>, u8), ()> {
+    let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| -> Result<u8, ()> {
         let safe_opts = options.to_safe();
         let mut local_bp = old_bp;
-        let mut out_buffer = Vec::new();
 
-        // If the output already has data and bp != 0, initialize the working buffer
-        // with the existing last byte so that bits are appended into it.
-        if c_buffer.len() > 0 && old_bp != 0 {
-            let last_byte = c_buffer.as_slice()[c_buffer.len() - 1];
-            out_buffer.push(last_byte);
-        }
-
-        let res = deflate_fn(&safe_opts, block_type, in_slice, &mut local_bp, &mut out_buffer);
+        let res = deflate_fn(&safe_opts, block_type, in_slice, &mut local_bp, &mut c_buffer);
         if res.is_err() {
             return Err(());
         }
 
-        Ok((out_buffer, local_bp))
+        Ok(local_bp)
     }));
 
-    if let Ok(Ok((out_buffer, new_bp))) = caught {
-        if c_buffer.len() > 0 && old_bp != 0 {
-            if !out_buffer.is_empty() {
-                let last_idx = c_buffer.len() - 1;
-                c_buffer.as_mut_slice()[last_idx] = out_buffer[0];
-                if out_buffer.len() > 1 {
-                    c_buffer.extend_from_slice(&out_buffer[1..]);
-                }
-            }
-        } else if !out_buffer.is_empty() {
-            c_buffer.extend_from_slice(&out_buffer);
-        }
+    if let Ok(Ok(new_bp)) = caught {
         *bp = new_bp;
-        c_buffer.into_raw(out, outsize);
     }
+    c_buffer.into_raw(out, outsize);
 }
 
 /// Deflates data per the deflate specification and appends the result to the output.
@@ -557,7 +558,7 @@ pub unsafe extern "C" fn Rust_ZopfliDeflate(
                       bt: BlockType,
                       data: &[u8],
                       local_bp: &mut u8,
-                      buffer: &mut Vec<u8>| {
+                      buffer: &mut CBuffer| {
         deflate(opts, bt, final_block != 0, data, local_bp, buffer)
     };
 
@@ -599,7 +600,7 @@ pub unsafe extern "C" fn Rust_ZopfliDeflatePart(
                       bt: BlockType,
                       data: &[u8],
                       local_bp: &mut u8,
-                      buffer: &mut Vec<u8>| {
+                      buffer: &mut CBuffer| {
         deflate_part(opts, bt, final_block != 0, data, instart, inend, local_bp, buffer)
     };
 
