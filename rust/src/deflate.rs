@@ -22,9 +22,32 @@ use crate::util::{
     RLE_ZERO_18_EXTRA_BITS, RLE_ZERO_18_MAX, RLE_ZERO_18_MIN,
 };
 use std::cmp;
+use std::ops::IndexMut;
+
+/// The output a bitstream is appended to: a `Vec<u8>`, or the buffer a C caller passes in.
+pub trait OutBuffer: IndexMut<usize, Output = u8> {
+    /// Appends one byte.
+    fn push(&mut self, byte: u8);
+    /// Returns the number of bytes written so far.
+    fn len(&self) -> usize;
+    /// Returns true if no byte has been written.
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl OutBuffer for Vec<u8> {
+    fn push(&mut self, byte: u8) {
+        Vec::push(self, byte);
+    }
+
+    fn len(&self) -> usize {
+        Vec::len(self)
+    }
+}
 
 /// Appends a single bit to the output bitstream.
-fn add_bit(bit: u8, bp: &mut u8, out: &mut Vec<u8>) {
+fn add_bit(bit: u8, bp: &mut u8, out: &mut impl OutBuffer) {
     if *bp == 0 || out.is_empty() {
         out.push(0);
     }
@@ -34,7 +57,7 @@ fn add_bit(bit: u8, bp: &mut u8, out: &mut Vec<u8>) {
 }
 
 /// Appends multiple bits to the output bitstream (LSB first).
-fn add_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut Vec<u8>) {
+fn add_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut impl OutBuffer) {
     for i in 0..length {
         let bit = ((symbol >> i) & 1) as u8;
         add_bit(bit, bp, out);
@@ -42,7 +65,7 @@ fn add_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut Vec<u8>) {
 }
 
 /// Appends multiple bits to the output bitstream (MSB first, as used for Huffman codes).
-fn add_huffman_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut Vec<u8>) {
+fn add_huffman_bits(symbol: u32, length: u32, bp: &mut u8, out: &mut impl OutBuffer) {
     for i in 0..length {
         let bit = ((symbol >> (length - i - 1)) & 1) as u8;
         add_bit(bit, bp, out);
@@ -58,7 +81,7 @@ fn encode_tree(
     use_17: bool,
     use_18: bool,
     bp: &mut u8,
-    out: Option<&mut Vec<u8>>,
+    out: Option<&mut impl OutBuffer>,
 ) -> usize {
     let mut hlit = 29usize; // 286 - 257
     let mut hdist = 29usize; // 32 - 1, but gzip does not like hdist > 29.
@@ -203,7 +226,7 @@ fn encode_tree(
 }
 
 /// Matches AddDynamicTree in C. Finds the best permutation of rle options and writes the tree.
-fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mut Vec<u8>) {
+fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mut impl OutBuffer) {
     let mut best = 0;
     let mut bestsize = 0usize;
 
@@ -215,7 +238,7 @@ fn add_dynamic_tree(ll_lengths: &[u32], d_lengths: &[u32], bp: &mut u8, out: &mu
             (i & 2) != 0,
             (i & 4) != 0,
             &mut 0,
-            None,
+            None::<&mut Vec<u8>>,
         );
         if bestsize == 0 || size < bestsize {
             bestsize = size;
@@ -244,7 +267,7 @@ fn add_lz77_data(
     d_symbols: &[u32],
     d_lengths: &[u32],
     bp: &mut u8,
-    out: &mut Vec<u8>,
+    out: &mut impl OutBuffer,
 ) {
     for i in lstart..lend {
         let dist = lz77.dists[i] as usize;
@@ -269,7 +292,7 @@ fn add_non_compressed_block(
     instart: usize,
     inend: usize,
     bp: &mut u8,
-    out: &mut Vec<u8>,
+    out: &mut impl OutBuffer,
 ) {
     let mut pos = instart;
     loop {
@@ -312,7 +335,7 @@ pub fn add_lz77_block(
     lstart: usize,
     lend: usize,
     bp: &mut u8,
-    out: &mut Vec<u8>,
+    out: &mut impl OutBuffer,
 ) -> Result<(), Error> {
     if btype == BlockType::Uncompressed {
         let length = squeeze::lz77_get_byte_range(&lz77.as_view(), lstart, lend);
@@ -365,7 +388,7 @@ fn add_lz77_block_auto_type(
     lstart: usize,
     lend: usize,
     bp: &mut u8,
-    out: &mut Vec<u8>,
+    out: &mut impl OutBuffer,
 ) -> Result<(), Error> {
     let uncompressedcost =
         squeeze::calculate_block_size(&lz77.as_view(), lstart, lend, /* btype= */ 0);
@@ -445,7 +468,7 @@ pub fn deflate_part(
     instart: usize,
     inend: usize,
     bp: &mut u8,
-    out: &mut Vec<u8>,
+    out: &mut impl OutBuffer,
 ) -> Result<(), Error> {
     if btype == BlockType::Uncompressed {
         add_non_compressed_block(final_block, in_data, instart, inend, bp, out);
@@ -564,7 +587,7 @@ pub fn deflate(
     final_block: bool,
     in_data: &[u8],
     bp: &mut u8,
-    out: &mut Vec<u8>,
+    out: &mut impl OutBuffer,
 ) -> Result<(), Error> {
     if in_data.is_empty() {
         deflate_part(
