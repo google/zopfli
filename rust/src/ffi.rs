@@ -514,6 +514,8 @@ unsafe fn deflate_helper<F>(
     // SAFETY: Output buffer validity guaranteed by caller safety contract.
     let mut c_buffer = unsafe { CBuffer::from_raw(*out, *outsize) };
     let old_bp = *bp & 7;
+    let old_len = c_buffer.len;
+    let old_last = c_buffer.as_slice().last().copied();
 
     let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| -> Result<u8, ()> {
         let safe_opts = options.to_safe();
@@ -529,6 +531,11 @@ unsafe fn deflate_helper<F>(
 
     if let Ok(Ok(new_bp)) = caught {
         *bp = new_bp;
+    } else {
+        c_buffer.len = old_len;
+        if let Some(last_byte) = old_last {
+            c_buffer.as_mut_slice()[old_len - 1] = last_byte;
+        }
     }
     c_buffer.into_raw(out, outsize);
 }
