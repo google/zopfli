@@ -485,8 +485,7 @@ unsafe fn deflate_helper<F>(
     let block_type = match btype {
         0 => BlockType::Uncompressed,
         1 => BlockType::FixedTree,
-        2 => BlockType::DynamicTree,
-        _ => return,
+        _ => BlockType::DynamicTree,
     };
 
     // SAFETY: Input slice validity guaranteed by caller safety contract.
