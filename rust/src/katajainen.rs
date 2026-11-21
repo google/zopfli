@@ -148,7 +148,7 @@ pub fn length_limited_code_lengths(
         *val = 0;
     }
 
-    let mut leaves = Vec::new();
+    let mut leaves = Vec::with_capacity(n);
     for (i, &freq) in frequencies.iter().enumerate() {
         if freq > 0 {
             leaves.push(Leaf { weight: freq, count: i });

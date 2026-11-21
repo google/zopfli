@@ -194,19 +194,7 @@ pub fn calculate_bit_lengths(
         return Err(Error::SliceLengthMismatch);
     }
 
-    unlimited_code_lengths(count, bitlengths)?;
-
-    let mut fallback = false;
-    for &len in bitlengths.iter() {
-        if len > maxbits as u32 {
-            fallback = true;
-            break;
-        }
-    }
-
-    if fallback {
-        crate::katajainen::length_limited_code_lengths(count, maxbits, bitlengths)?;
-    }
+    crate::katajainen::length_limited_code_lengths(count, maxbits, bitlengths)?;
 
     Ok(())
 }
