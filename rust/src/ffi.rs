@@ -512,7 +512,7 @@ unsafe fn deflate_helper<F>(
     let in_slice = unsafe { slice_from_c_raw_parts(in_data, in_len) };
     // SAFETY: Output buffer validity guaranteed by caller safety contract.
     let mut c_buffer = unsafe { CBuffer::from_raw(*out, *outsize) };
-    let old_bp = *bp & 7;
+    let old_bp = *bp;
     let old_len = c_buffer.len;
     let old_last = c_buffer.as_slice().last().copied();
 
