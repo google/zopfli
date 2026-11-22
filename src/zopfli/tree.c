@@ -76,13 +76,13 @@ void ZopfliCalculateEntropy(const size_t* count, size_t n, double* bitlengths) {
   for (i = 0; i < n; ++i) {
     sum += count[i];
   }
-  log2sum = (sum == 0 ? log(n) : log(sum)) * kInvLog2;
+  log2sum = (sum == 0 ? log((double)n) : log((double)sum)) * kInvLog2;
   for (i = 0; i < n; ++i) {
     /* When the count of the symbol is 0, but its cost is requested anyway, it
     means the symbol will appear at least once anyway, so give it the cost as if
     its count is 1.*/
     if (count[i] == 0) bitlengths[i] = log2sum;
-    else bitlengths[i] = log2sum - log(count[i]) * kInvLog2;
+    else bitlengths[i] = log2sum - log((double)count[i]) * kInvLog2;
     /* Depending on compiler and architecture, the above subtraction of two
     floating point numbers may give a negative result very close to zero
     instead of zero (e.g. -5.973954e-17 with gcc 4.1.2 on Ubuntu 11.4). Clamp
