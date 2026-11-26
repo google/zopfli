@@ -161,11 +161,15 @@ struct CBuffer {
 impl CBuffer {
     /// Takes ownership of an existing C-allocated buffer and initialized length.
     ///
+    /// If `len` is 0, `ptr` is ignored and the buffer starts empty, as in C's
+    /// `ZOPFLI_APPEND_DATA`, which mallocs a new array when the size is 0.
+    ///
     /// # Safety
     ///
-    /// If `ptr` is non-null, it must have been allocated via `libc::malloc`/`libc::realloc`
+    /// If `len` is non-zero, `ptr` must have been allocated via `libc::malloc`/`libc::realloc`
     /// and be valid for reads and writes of `len` bytes.
     unsafe fn from_raw(ptr: *mut u8, len: usize) -> Self {
+        let ptr = if len == 0 { ptr::null_mut() } else { ptr };
         // Conservative initial capacity: assumes only `len` bytes are allocated.
         // Any append operation will immediately reallocate to a known power-of-two capacity.
         Self { ptr, len, capacity: len }
@@ -328,10 +332,9 @@ pub unsafe extern "C" fn Rust_ZopfliCleanLZ77Store(store: Option<&mut CZopfliLZ7
 /// # Safety
 ///
 /// - `in_data` must be valid for reads of `insize` bytes.
-/// - If `out` is `Some`, `*out` must be null or point to a buffer of at least `*outsize` bytes
-///   allocated via `libc::malloc`/`libc::realloc`.
-/// - If `outsize` is `Some`, `*outsize` must match the byte length of `*out` (or be 0 if `*out` is
-///   null).
+/// - If `out` and `outsize` are `Some` and `*outsize` is non-zero, `*out` must point to a buffer
+///   of at least `*outsize` bytes allocated via `libc::malloc`/`libc::realloc`. If `*outsize` is
+///   0, `*out` is ignored and overwritten, as in C.
 #[inline(always)]
 unsafe fn compress_helper<F>(
     options: Option<&CZopfliOptions>,
@@ -377,10 +380,9 @@ unsafe fn compress_helper<F>(
 /// # Safety
 ///
 /// - `in_data` must be valid for reads of `insize` bytes.
-/// - If `out` is `Some`, `*out` must be null or point to a buffer of at least `*outsize` bytes
-///   allocated via `libc::malloc`/`libc::realloc`.
-/// - If `outsize` is `Some`, `*outsize` must match the byte length of `*out` (or be 0 if `*out` is
-///   null).
+/// - If `out` and `outsize` are `Some` and `*outsize` is non-zero, `*out` must point to a buffer
+///   of at least `*outsize` bytes allocated via `libc::malloc`/`libc::realloc`. If `*outsize` is
+///   0, `*out` is ignored and overwritten, as in C.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Rust_ZopfliCompress(
     options: Option<&CZopfliOptions>,
@@ -420,10 +422,9 @@ pub unsafe extern "C" fn Rust_ZopfliCompress(
 /// # Safety
 ///
 /// - `in_data` must be valid for reads of `insize` bytes.
-/// - If `out` is `Some`, `*out` must be null or point to a buffer of at least `*outsize` bytes
-///   allocated via `libc::malloc`/`libc::realloc`.
-/// - If `outsize` is `Some`, `*outsize` must match the byte length of `*out` (or be 0 if `*out` is
-///   null).
+/// - If `out` and `outsize` are `Some` and `*outsize` is non-zero, `*out` must point to a buffer
+///   of at least `*outsize` bytes allocated via `libc::malloc`/`libc::realloc`. If `*outsize` is
+///   0, `*out` is ignored and overwritten, as in C.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Rust_ZopfliGzipCompress(
     options: Option<&CZopfliOptions>,
@@ -443,10 +444,9 @@ pub unsafe extern "C" fn Rust_ZopfliGzipCompress(
 /// # Safety
 ///
 /// - `in_data` must be valid for reads of `insize` bytes.
-/// - If `out` is `Some`, `*out` must be null or point to a buffer of at least `*outsize` bytes
-///   allocated via `libc::malloc`/`libc::realloc`.
-/// - If `outsize` is `Some`, `*outsize` must match the byte length of `*out` (or be 0 if `*out` is
-///   null).
+/// - If `out` and `outsize` are `Some` and `*outsize` is non-zero, `*out` must point to a buffer
+///   of at least `*outsize` bytes allocated via `libc::malloc`/`libc::realloc`. If `*outsize` is
+///   0, `*out` is ignored and overwritten, as in C.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Rust_ZopfliZlibCompress(
     options: Option<&CZopfliOptions>,
@@ -466,10 +466,9 @@ pub unsafe extern "C" fn Rust_ZopfliZlibCompress(
 /// # Safety
 ///
 /// - `in_data` must be valid for reads of `in_len` bytes.
-/// - If `out` is `Some`, `*out` must be null or point to a buffer of at least `*outsize` bytes
-///   allocated via `libc::malloc`/`libc::realloc`.
-/// - If `outsize` is `Some`, `*outsize` must match the byte length of `*out` (or be 0 if `*out` is
-///   null).
+/// - If `out` and `outsize` are `Some` and `*outsize` is non-zero, `*out` must point to a buffer
+///   of at least `*outsize` bytes allocated via `libc::malloc`/`libc::realloc`. If `*outsize` is
+///   0, `*out` is ignored and overwritten, as in C.
 /// - If `bp` is `Some`, `*bp` must contain a bit offset in `0..=7`.
 #[allow(clippy::too_many_arguments)]
 #[inline(always)]
@@ -544,10 +543,9 @@ unsafe fn deflate_helper<F>(
 /// # Safety
 ///
 /// - `in_data` must be valid for reads of `insize` bytes.
-/// - If `out` is `Some`, `*out` must be null or point to a buffer of at least `*outsize` bytes
-///   allocated via `libc::malloc`/`libc::realloc`.
-/// - If `outsize` is `Some`, `*outsize` must match the byte size of `*out` (or be 0 if `*out` is
-///   null).
+/// - If `out` and `outsize` are `Some` and `*outsize` is non-zero, `*out` must point to a buffer
+///   of at least `*outsize` bytes allocated via `libc::malloc`/`libc::realloc`. If `*outsize` is
+///   0, `*out` is ignored and overwritten, as in C.
 /// - If `bp` is `Some`, `*bp` must contain a bit offset in `0..=7`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Rust_ZopfliDeflate(
@@ -581,10 +579,9 @@ pub unsafe extern "C" fn Rust_ZopfliDeflate(
 ///
 /// - `in_data` must be valid for reads of `inend` bytes.
 /// - `instart` must be `<= inend`.
-/// - If `out` is `Some`, `*out` must be null or point to a buffer of at least `*outsize` bytes
-///   allocated via `libc::malloc`/`libc::realloc`.
-/// - If `outsize` is `Some`, `*outsize` must match the byte size of `*out` (or be 0 if `*out` is
-///   null).
+/// - If `out` and `outsize` are `Some` and `*outsize` is non-zero, `*out` must point to a buffer
+///   of at least `*outsize` bytes allocated via `libc::malloc`/`libc::realloc`. If `*outsize` is
+///   0, `*out` is ignored and overwritten, as in C.
 /// - If `bp` is `Some`, `*bp` must contain a bit offset in `0..=7`.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn Rust_ZopfliDeflatePart(
