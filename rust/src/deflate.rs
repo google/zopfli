@@ -328,7 +328,7 @@ fn add_non_compressed_block(
 
 /// Compresses a single block.
 pub fn add_lz77_block(
-    _options: &SafeOptions,
+    options: &SafeOptions,
     btype: BlockType,
     final_block: bool,
     lz77: &Lz77Store,
@@ -366,7 +366,11 @@ pub fn add_lz77_block(
             &mut ll_lengths,
             &mut d_lengths,
         );
+        let detect_tree_size = out.len();
         add_dynamic_tree(&ll_lengths, &d_lengths, bp, out);
+        if options.verbose {
+            eprintln!("treesize: {}", (out.len() - detect_tree_size) as i32);
+        }
     }
 
     let mut ll_symbols = [0u32; NUM_LL];
@@ -374,8 +378,22 @@ pub fn add_lz77_block(
     tree::lengths_to_symbols(&ll_lengths, 15, &mut ll_symbols)?;
     tree::lengths_to_symbols(&d_lengths, 15, &mut d_symbols)?;
 
+    let detect_block_size = out.len();
     add_lz77_data(lz77, lstart, lend, &ll_symbols, &ll_lengths, &d_symbols, &d_lengths, bp, out);
     add_huffman_bits(ll_symbols[256], ll_lengths[256], bp, out);
+
+    if options.verbose {
+        let uncompressed_size: usize = (lstart..lend)
+            .map(|i| if lz77.dists[i] == 0 { 1 } else { lz77.litlens[i] as usize })
+            .sum();
+        let compressed_size = out.len() - detect_block_size;
+        eprintln!(
+            "compressed block size: {} ({}k) (unc: {})",
+            compressed_size as i32,
+            (compressed_size / 1024) as i32,
+            uncompressed_size as i32
+        );
+    }
 
     Ok(())
 }
@@ -589,6 +607,7 @@ pub fn deflate(
     bp: &mut u8,
     out: &mut impl OutBuffer,
 ) -> Result<(), Error> {
+    let offset = out.len();
     if in_data.is_empty() {
         deflate_part(
             options,
@@ -600,9 +619,9 @@ pub fn deflate(
             bp,
             out,
         )?;
-        return Ok(());
     }
 
+    // The loop does not run for an empty input.
     let mut i = 0usize;
     while i < in_data.len() {
         let macrofinal = i + MACRO_BLOCK_SIZE >= in_data.len();
@@ -610,6 +629,19 @@ pub fn deflate(
         let size = if macrofinal { in_data.len() - i } else { MACRO_BLOCK_SIZE };
         deflate_part(options, btype, chunk_final, in_data, i, i + size, bp, out)?;
         i += size;
+    }
+
+    if options.verbose {
+        let insize = in_data.len();
+        let deflate_size = out.len() - offset;
+        // Like C, the subtraction wraps when the output is larger than the input, and an empty
+        // input gives "inf".
+        eprintln!(
+            "Original Size: {}, Deflate: {}, Compression: {:.6}% Removed",
+            insize,
+            deflate_size,
+            100.0 * insize.wrapping_sub(deflate_size) as f64 / insize as f64
+        );
     }
 
     Ok(())
