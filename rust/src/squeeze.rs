@@ -912,6 +912,11 @@ pub fn lz77_optimal<'a>(
 
         lastcost = cost;
     }
+
+    if numiterations == 0 {
+        // No iteration ran: output the greedy parse so that no data is lost.
+        *store = currentstore;
+    }
 }
 
 /// Estimates the optimal block size for a chunk of LZ77 data.
