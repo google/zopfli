@@ -2,6 +2,7 @@
 
 #![forbid(unsafe_code)]
 
+use crate::deflate::OutBuffer;
 use crate::error::Error;
 use crate::util::{BlockType, SafeOptions};
 
@@ -9,7 +10,7 @@ use crate::util::{BlockType, SafeOptions};
 pub fn gzip_compress(
     options: &SafeOptions,
     in_data: &[u8],
-    out: &mut Vec<u8>,
+    out: &mut impl OutBuffer,
 ) -> Result<(), Error> {
     let crcvalue = crate::checksum::crc32(in_data);
     let mut bp = 0u8;
@@ -51,17 +52,15 @@ pub fn gzip_compress(
     out.push((insize >> 24) as u8);
 
     if options.verbose {
+        // Like C, `outsize` includes output that was in `out` before this call, the subtraction
+        // wraps when the output is larger than the input, and an empty input gives "inf".
+        let insize = in_data.len();
         let outsize = out.len();
-        let compression = if in_data.is_empty() {
-            0.0
-        } else {
-            100.0 * (in_data.len() as f64 - outsize as f64) / in_data.len() as f64
-        };
         eprintln!(
             "Original Size: {}, Gzip: {}, Compression: {:.6}% Removed",
-            in_data.len(),
-            outsize,
-            compression
+            insize as i32,
+            outsize as i32,
+            100.0 * insize.wrapping_sub(outsize) as f64 / insize as f64
         );
     }
 

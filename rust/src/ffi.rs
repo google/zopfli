@@ -341,7 +341,7 @@ unsafe fn compress_helper<F>(
     outsize: Option<&mut libc::size_t>,
     compress_fn: F,
 ) where
-    F: FnOnce(&SafeOptions, &[u8], &mut Vec<u8>) -> Result<(), crate::error::Error>
+    F: FnOnce(&SafeOptions, &[u8], &mut CBuffer) -> Result<(), crate::error::Error>
         + std::panic::UnwindSafe,
 {
     let (Some(options), Some(out), Some(outsize)) = (options, out, outsize) else {
@@ -358,18 +358,19 @@ unsafe fn compress_helper<F>(
     let data_slice = unsafe { slice_from_c_raw_parts(in_data, insize) };
     // SAFETY: Output buffer validity guaranteed by caller safety contract.
     let mut c_buffer = unsafe { CBuffer::from_raw(*out, *outsize) };
+    let old_len = c_buffer.len;
 
-    let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| -> Result<Vec<u8>, ()> {
-        let safe_opts = options.to_safe();
-        let mut out_buffer = Vec::new();
-        compress_fn(&safe_opts, data_slice, &mut out_buffer).map_err(|_| ())?;
-        Ok(out_buffer)
+    // Appends directly to the caller's buffer, as C does, so that verbose output reports the
+    // same sizes. The compressors only append, so on failure truncating to `old_len` restores
+    // the original contents.
+    let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        compress_fn(&options.to_safe(), data_slice, &mut c_buffer)
     }));
-
-    if let Ok(Ok(out_buffer)) = caught {
-        c_buffer.extend_from_slice(&out_buffer);
-        c_buffer.into_raw(out, outsize);
+    if !matches!(caught, Ok(Ok(()))) {
+        c_buffer.len = old_len;
     }
+    // The buffer may have been reallocated even on failure, so always hand it back.
+    c_buffer.into_raw(out, outsize);
 }
 
 /// Compresses per deflate specification and appends the compressed result to the output.
@@ -390,7 +391,7 @@ pub unsafe extern "C" fn Rust_ZopfliCompress(
     out: Option<&mut *mut u8>,
     outsize: Option<&mut libc::size_t>,
 ) {
-    let compress_fn = |opts: &SafeOptions, data: &[u8], buffer: &mut Vec<u8>| {
+    let compress_fn = |opts: &SafeOptions, data: &[u8], buffer: &mut CBuffer| {
         match output_type {
             0 => gzip_compress(opts, data, buffer),
             1 => zlib_compress(opts, data, buffer),
