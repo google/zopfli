@@ -636,9 +636,10 @@ pub unsafe extern "C" fn Rust_ZopfliCalculateBlockSize(
     if lstart > lend || lend > lz77.size {
         return 0.0;
     }
+    // Like C, any btype other than 0 and 1 is sized as a dynamic block.
     let block_type = match btype {
-        0..=2 => btype,
-        _ => return 0.0,
+        0 | 1 => btype,
+        _ => 2,
     };
     let caught = panic::catch_unwind(panic::AssertUnwindSafe(|| -> f64 {
         // SAFETY: `lz77` validity is guaranteed by the caller safety contract.
