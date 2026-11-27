@@ -857,7 +857,9 @@ void ZopfliDeflatePart(const ZopfliOptions* options, int btype, int final,
     ZopfliBlockState s;
     ZopfliLZ77Store store;
     ZopfliInitLZ77Store(in, &store);
-    ZopfliInitBlockState(options, start, end, 1, &s);
+    /* No longest match cache: ZopfliLZ77Optimal searches each position once
+    and keeps its own per-distance-symbol cache. */
+    ZopfliInitBlockState(options, start, end, 0, &s);
     ZopfliLZ77Optimal(&s, in, start, end, options->numiterations, &store);
     totalcost += ZopfliCalculateBlockSizeAutoType(&store, 0, store.size);
 

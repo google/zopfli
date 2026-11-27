@@ -140,23 +140,6 @@ static double GetCostFixed(unsigned litlen, unsigned dist, void* unused) {
 }
 
 /*
-Cost model based on symbol statistics.
-type: CostModelFun
-*/
-static double GetCostStat(unsigned litlen, unsigned dist, void* context) {
-  SymbolStats* stats = (SymbolStats*)context;
-  if (dist == 0) {
-    return stats->ll_symbols[litlen];
-  } else {
-    int lsym = ZopfliGetLengthSymbol(litlen);
-    int lbits = ZopfliGetLengthExtraBits(litlen);
-    int dsym = ZopfliGetDistSymbol(dist);
-    int dbits = ZopfliGetDistExtraBits(dist);
-    return lbits + dbits + stats->ll_symbols[lsym] + stats->d_symbols[dsym];
-  }
-}
-
-/*
 Finds the minimum possible cost this cost model can return for valid length and
 distance symbols.
 */
@@ -443,6 +426,273 @@ static double LZ77OptimalRun(ZopfliBlockState* s,
   return cost;
 }
 
+/* ---- Distance-class aware optimal parsing ---- */
+
+/*
+Per block position, the longest match for each distance symbol, sorted by
+length (descending). Packed to keep memory near that of the longest match
+cache it replaces: one count byte per position, three bytes per entry.
+*/
+typedef struct ClassCache {
+  unsigned char* cnt;     /* entries at this position; bit 7: long run */
+  unsigned char* len;     /* match length - ZOPFLI_MIN_MATCH */
+  unsigned short* dist;
+  size_t n, cap;
+} ClassCache;
+
+#define CLASS_CACHE_RUN 0x80
+
+static void ClassCachePush(ClassCache* c, unsigned short l, unsigned short d) {
+  if (c->n == c->cap) {
+    c->cap = c->cap + c->cap / 2 + 1024;
+    c->len = (unsigned char*)realloc(c->len, c->cap);
+    c->dist = (unsigned short*)realloc(c->dist, c->cap * sizeof(*c->dist));
+    if (!c->len || !c->dist) exit(-1); /* Allocation failed. */
+  }
+  c->len[c->n] = (unsigned char)(l - ZOPFLI_MIN_MATCH);
+  c->dist[c->n] = d;
+  c->n++;
+}
+
+static void BuildClassCache(ZopfliBlockState* s,
+                            const unsigned char* in, size_t instart,
+                            size_t inend, ZopfliHash* h, ClassCache* c) {
+  unsigned short sublen[259];
+  size_t blocksize = inend - instart, i;
+  size_t windowstart = instart > ZOPFLI_WINDOW_SIZE
+      ? instart - ZOPFLI_WINDOW_SIZE : 0;
+  unsigned short clen[30], cdist[30];
+  memset(c, 0, sizeof(*c));
+  c->cnt = (unsigned char*)malloc(blocksize + 1);
+  if (!c->cnt) exit(-1); /* Allocation failed. */
+  ZopfliResetHash(ZOPFLI_WINDOW_SIZE, h);
+  ZopfliWarmupHash(in, windowstart, inend, h);
+  for (i = windowstart; i < instart; i++) ZopfliUpdateHash(in, i, inend, h);
+  for (i = instart; i < inend; i++) {
+    int k, m = 0, run = 0;
+    unsigned char order[30];
+    ZopfliUpdateHash(in, i, inend, h);
+    /* Same condition as ZOPFLI_SHORTCUT_LONG_REPETITIONS in GetBestLengths. */
+    if (h->same[i & ZOPFLI_WINDOW_MASK] > ZOPFLI_MAX_MATCH * 2
+        && i > instart + ZOPFLI_MAX_MATCH + 1
+        && i + ZOPFLI_MAX_MATCH * 2 + 1 < inend
+        && h->same[(i - ZOPFLI_MAX_MATCH) & ZOPFLI_WINDOW_MASK]
+            > ZOPFLI_MAX_MATCH) {
+      run = 1;
+      for (k = 0; k < 30; k++) { clen[k] = 0; cdist[k] = 0; }
+    } else {
+      ZopfliFindClassMatches(h, in, i, inend, clen, cdist);
+    }
+    if (inend - i >= ZOPFLI_MIN_MATCH) {
+      /* Deep search (cached): nearest distance for every length. */
+      unsigned short d0, l0;
+      ZopfliFindLongestMatch(s, h, in, i, inend, ZOPFLI_MAX_MATCH, sublen,
+                             &d0, &l0);
+      for (k = 3; k <= l0; k++) {
+        int ds = ZopfliGetDistSymbol(sublen[k]);
+        if (k > clen[ds]) { clen[ds] = k; cdist[ds] = sublen[k]; }
+      }
+    }
+    for (k = 0; k < 30; k++) if (clen[k]) order[m++] = (unsigned char)k;
+    /* insertion sort by length descending */
+    for (k = 1; k < m; k++) {
+      unsigned char t = order[k]; int q = k - 1;
+      while (q >= 0 && clen[order[q]] < clen[t]) { order[q + 1] = order[q]; q--; }
+      order[q + 1] = t;
+    }
+    for (k = 0; k < m; k++) {
+      ClassCachePush(c, clen[order[k]], cdist[order[k]]);
+    }
+    c->cnt[i - instart] = (unsigned char)(m | (run ? CLASS_CACHE_RUN : 0));
+  }
+}
+
+/* Longest match at a position from the class cache, nearest distance first,
+as ZopfliFindLongestMatch would return it. */
+static void ClassCacheLongest(const ClassCache* c, size_t e, size_t n,
+                              unsigned short* leng, unsigned short* dist) {
+  size_t k;
+  *leng = 0;
+  *dist = 0;
+  if (n == 0) return;
+  *leng = c->len[e] + ZOPFLI_MIN_MATCH;
+  *dist = c->dist[e];
+  for (k = 1; k < n && c->len[e + k] == c->len[e]; k++) {
+    if (c->dist[e + k] < *dist) *dist = c->dist[e + k];
+  }
+}
+
+static int GreedyLengthScore(int length, int distance) {
+  return distance > 1024 ? length - 1 : length;
+}
+
+/*
+The same lazy greedy parse as ZopfliLZ77Greedy, but reading matches from the
+class cache instead of searching the hash chains again.
+*/
+static void GreedyFromClassCache(const unsigned char* in, size_t instart,
+                                 size_t inend, const ClassCache* c,
+                                 ZopfliLZ77Store* store) {
+  size_t blocksize = inend - instart, i, j;
+  size_t* eoff = (size_t*)malloc(sizeof(size_t) * (blocksize + 1));
+  unsigned short leng, dist;
+  unsigned prev_length = 0, prev_match = 0;
+  int lengthscore, prevlengthscore, match_available = 0;
+  if (!eoff) exit(-1); /* Allocation failed. */
+  eoff[0] = 0;
+  for (i = 0; i < blocksize; i++) {
+    eoff[i + 1] = eoff[i] + (c->cnt[i] & ~CLASS_CACHE_RUN);
+  }
+  for (i = 0; i < blocksize; i++) {
+    size_t pos = instart + i;
+    ClassCacheLongest(c, eoff[i], eoff[i + 1] - eoff[i], &leng, &dist);
+    lengthscore = GreedyLengthScore(leng, dist);
+    prevlengthscore = GreedyLengthScore(prev_length, prev_match);
+    if (match_available) {
+      match_available = 0;
+      if (lengthscore > prevlengthscore + 1) {
+        ZopfliStoreLitLenDist(in[pos - 1], 0, pos - 1, store);
+        if (lengthscore >= ZOPFLI_MIN_MATCH && leng < ZOPFLI_MAX_MATCH) {
+          match_available = 1;
+          prev_length = leng;
+          prev_match = dist;
+          continue;
+        }
+      } else {
+        leng = prev_length;
+        dist = prev_match;
+        ZopfliVerifyLenDist(in, inend, pos - 1, dist, leng);
+        ZopfliStoreLitLenDist(leng, dist, pos - 1, store);
+        for (j = 2; j < leng; j++) i++;
+        continue;
+      }
+    } else if (lengthscore >= ZOPFLI_MIN_MATCH && leng < ZOPFLI_MAX_MATCH) {
+      match_available = 1;
+      prev_length = leng;
+      prev_match = dist;
+      continue;
+    }
+    if (lengthscore >= ZOPFLI_MIN_MATCH) {
+      ZopfliVerifyLenDist(in, inend, pos, dist, leng);
+      ZopfliStoreLitLenDist(leng, dist, pos, store);
+    } else {
+      leng = 1;
+      ZopfliStoreLitLenDist(in[pos], 0, pos, store);
+    }
+    for (j = 1; j < leng; j++) i++;
+  }
+  free(eoff);
+}
+
+static void CleanClassCache(ClassCache* c) {
+  free(c->cnt); free(c->len); free(c->dist);
+}
+
+/* Forward DP using per-class matches. Fills length_array and dist_array. */
+static void GetBestLengthsClass(const unsigned char* in, size_t instart,
+                                size_t inend, const SymbolStats* st,
+                                const ClassCache* c,
+                                unsigned short* length_array,
+                                unsigned short* dist_array, float* costs) {
+  size_t blocksize = inend - instart, j;
+  double lcost[ZOPFLI_MAX_MATCH + 1];
+  double dcost[30];
+  double minl = ZOPFLI_LARGE_FLOAT, mind = ZOPFLI_LARGE_FLOAT, mincost;
+  size_t e0 = 0;
+  int k;
+  for (k = 3; k <= ZOPFLI_MAX_MATCH; k++) {
+    lcost[k] = st->ll_symbols[ZopfliGetLengthSymbol(k)]
+        + ZopfliGetLengthExtraBits(k);
+    if (lcost[k] < minl) minl = lcost[k];
+  }
+  for (k = 0; k < 30; k++) {
+    dcost[k] = st->d_symbols[k] + ZopfliGetDistSymbolExtraBits(k);
+    if (dcost[k] < mind) mind = dcost[k];
+  }
+  mincost = minl + mind;
+  for (j = 1; j <= blocksize; j++) costs[j] = ZOPFLI_LARGE_FLOAT;
+  costs[0] = 0;
+  length_array[0] = 0;
+  for (j = 0; j < blocksize; j++) {
+    double cj;
+    double newCost;
+    size_t e, eend;
+    if (c->cnt[j] & CLASS_CACHE_RUN) {
+      /* Mirror ZOPFLI_SHORTCUT_LONG_REPETITIONS: step by max-length matches
+      of distance 1 instead of trying every length. Entries of the skipped
+      positions are passed over too. */
+      double symbolcost = lcost[ZOPFLI_MAX_MATCH] + dcost[0];
+      size_t q;
+      for (q = 0; q < ZOPFLI_MAX_MATCH && j + ZOPFLI_MAX_MATCH <= blocksize; q++) {
+        costs[j + ZOPFLI_MAX_MATCH] = costs[j] + symbolcost;
+        length_array[j + ZOPFLI_MAX_MATCH] = ZOPFLI_MAX_MATCH;
+        dist_array[j + ZOPFLI_MAX_MATCH] = 1;
+        e0 += c->cnt[j] & ~CLASS_CACHE_RUN;
+        j++;
+      }
+      if (j >= blocksize) break;
+    }
+    e = e0;
+    eend = e0 + (c->cnt[j] & ~CLASS_CACHE_RUN);
+    e0 = eend;
+    cj = costs[j];
+    newCost = cj + st->ll_symbols[in[instart + j]];
+    if (newCost < costs[j + 1]) {
+      costs[j + 1] = newCost;
+      length_array[j + 1] = 1;
+      dist_array[j + 1] = 0;
+    }
+    if (e < eend) {
+      int kmax = c->len[e] + ZOPFLI_MIN_MATCH;
+      double best = ZOPFLI_LARGE_FLOAT;
+      unsigned short bestd = 0;
+      double floorc = cj + mincost;
+      if ((size_t)kmax > blocksize - j) kmax = (int)(blocksize - j);
+      for (k = kmax; k >= ZOPFLI_MIN_MATCH; k--) {
+        while (e < eend && c->len[e] + ZOPFLI_MIN_MATCH >= k) {
+          double dc = dcost[ZopfliGetDistSymbol(c->dist[e])];
+          if (dc < best) { best = dc; bestd = c->dist[e]; }
+          e++;
+        }
+        if (costs[j + k] <= floorc) continue;
+        newCost = cj + best + lcost[k];
+        if (newCost < costs[j + k]) {
+          costs[j + k] = newCost;
+          length_array[j + k] = k;
+          dist_array[j + k] = bestd;
+        }
+      }
+    }
+  }
+}
+
+static void TraceAndStoreClass(const unsigned char* in, size_t instart,
+                               size_t inend, const unsigned short* length_array,
+                               const unsigned short* dist_array,
+                               ZopfliLZ77Store* store) {
+  size_t size = inend - instart, idx = size, n = 0, i;
+  unsigned* steps;
+  if (size == 0) return;
+  steps = (unsigned*)malloc(sizeof(unsigned) * (size + 1));
+  if (!steps) exit(-1);
+  while (idx > 0) {
+    steps[n++] = (unsigned)idx;
+    idx -= length_array[idx];
+  }
+  for (i = n; i-- > 0;) {
+    size_t end = steps[i];
+    unsigned short l = length_array[end];
+    size_t pos = instart + end - l;
+    if (l >= ZOPFLI_MIN_MATCH) {
+      ZopfliVerifyLenDist(in, inend, pos, dist_array[end], l);
+      ZopfliStoreLitLenDist(l, dist_array[end], pos, store);
+    } else {
+      ZopfliStoreLitLenDist(in[pos], 0, pos, store);
+    }
+  }
+  free(steps);
+}
+
 void ZopfliLZ77Optimal(ZopfliBlockState *s,
                        const unsigned char* in, size_t instart, size_t inend,
                        int numiterations,
@@ -451,8 +701,9 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   size_t blocksize = inend - instart;
   unsigned short* length_array =
       (unsigned short*)malloc(sizeof(unsigned short) * (blocksize + 1));
-  unsigned short* path = 0;
-  size_t pathsize = 0;
+  unsigned short* dist_array =
+      (unsigned short*)malloc(sizeof(unsigned short) * (blocksize + 1));
+  ClassCache ccache;
   ZopfliLZ77Store currentstore;
   ZopfliHash hash;
   ZopfliHash* h = &hash;
@@ -468,6 +719,7 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
 
   if (!costs) exit(-1); /* Allocation failed. */
   if (!length_array) exit(-1); /* Allocation failed. */
+  if (!dist_array) exit(-1); /* Allocation failed. */
 
   InitRanState(&ran_state);
   InitStats(&stats);
@@ -477,8 +729,12 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   /* Do regular deflate, then loop multiple shortest path runs, each time using
   the statistics of the previous run. */
 
-  /* Initial run. */
-  ZopfliLZ77Greedy(s, in, instart, inend, &currentstore, h);
+  /* Collect, once, the best match per distance symbol at every position. */
+  BuildClassCache(s, in, instart, inend, h, &ccache);
+
+  /* Initial run: the same lazy greedy parse as ZopfliLZ77Greedy, read from
+  the cache instead of searching again. */
+  GreedyFromClassCache(in, instart, inend, &ccache, &currentstore);
   GetStatistics(&currentstore, &stats);
 
   /* Repeat statistics with each time the cost model from the previous stat
@@ -486,9 +742,10 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
   for (i = 0; i < numiterations; i++) {
     ZopfliCleanLZ77Store(&currentstore);
     ZopfliInitLZ77Store(in, &currentstore);
-    LZ77OptimalRun(s, in, instart, inend, &path, &pathsize,
-                   length_array, GetCostStat, (void*)&stats,
-                   &currentstore, h, costs);
+    GetBestLengthsClass(in, instart, inend, &stats, &ccache,
+                        length_array, dist_array, costs);
+    TraceAndStoreClass(in, instart, inend, length_array, dist_array,
+                       &currentstore);
     cost = ZopfliCalculateBlockSize(&currentstore, 0, currentstore.size, 2);
     if (s->options->verbose_more || (s->options->verbose && cost < bestcost)) {
       fprintf(stderr, "Iteration %d: %d bit\n", i, (int) cost);
@@ -518,8 +775,9 @@ void ZopfliLZ77Optimal(ZopfliBlockState *s,
     lastcost = cost;
   }
 
+  CleanClassCache(&ccache);
   free(length_array);
-  free(path);
+  free(dist_array);
   free(costs);
   ZopfliCleanLZ77Store(&currentstore);
   ZopfliCleanHash(h);

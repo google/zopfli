@@ -628,3 +628,77 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
     }
   }
 }
+
+/*
+Like ZopfliFindLongestMatch, but for each of the 30 deflate distance symbols
+records the longest match length found within that symbol's distance range,
+and one distance achieving it. Within one distance symbol every distance has
+the same cost, so this is all an optimal parser needs to know.
+Returns the overall longest length.
+*/
+unsigned short ZopfliFindClassMatches(const ZopfliHash* h,
+    const unsigned char* array, size_t pos, size_t size,
+    unsigned short* clen, unsigned short* cdist) {
+  unsigned short hpos = pos & ZOPFLI_WINDOW_MASK, p, pp;
+  unsigned short bestlength = 0;
+  size_t limit = ZOPFLI_MAX_MATCH;
+  const unsigned char* scan;
+  const unsigned char* match;
+  const unsigned char* arrayend;
+  const unsigned char* arrayend_safe;
+  int chain_counter = ZOPFLI_CLASS_CHAIN_HITS;
+  unsigned dist = 0;
+  int* hhead = h->head;
+  unsigned short* hprev = h->prev;
+  int hval = h->val;
+  int i;
+
+  for (i = 0; i < 30; i++) { clen[i] = 0; cdist[i] = 0; }
+  if (size - pos < ZOPFLI_MIN_MATCH) return 0;
+  if (pos + limit > size) limit = size - pos;
+  arrayend = &array[pos] + limit;
+  arrayend_safe = arrayend - 8;
+
+  pp = hhead[hval];
+  p = hprev[pp];
+  assert(pp == hpos);
+  dist = p < pp ? pp - p : ((ZOPFLI_WINDOW_SIZE - p) + pp);
+
+  while (dist < ZOPFLI_WINDOW_SIZE) {
+    if (dist > 0 && dist <= pos) {
+      int ds = ZopfliGetDistSymbol(dist);
+      unsigned short cl = clen[ds];
+      scan = &array[pos];
+      match = &array[pos - dist];
+      if (pos + cl >= size || cl >= limit || scan[cl] == match[cl]) {
+        unsigned short currentlength;
+#ifdef ZOPFLI_HASH_SAME
+        unsigned short same0 = h->same[pos & ZOPFLI_WINDOW_MASK];
+        if (same0 > 2 && *scan == *match) {
+          unsigned short same1 = h->same[(pos - dist) & ZOPFLI_WINDOW_MASK];
+          unsigned short same = same0 < same1 ? same0 : same1;
+          if (same > limit) same = limit;
+          scan += same;
+          match += same;
+        }
+#endif
+        scan = GetMatch(scan, match, arrayend, arrayend_safe);
+        currentlength = scan - &array[pos];
+        if (currentlength > cl) {
+          clen[ds] = currentlength;
+          cdist[ds] = dist;
+          if (currentlength > bestlength) bestlength = currentlength;
+        }
+      }
+    }
+    pp = p;
+    p = hprev[p];
+    if (p == pp) break;
+    dist += p < pp ? pp - p : ((ZOPFLI_WINDOW_SIZE - p) + pp);
+    chain_counter--;
+    if (bestlength >= limit && chain_counter > 64) chain_counter = 64;
+    if (chain_counter <= 0) break;
+  }
+  for (i = 0; i < 30; i++) if (clen[i] < ZOPFLI_MIN_MATCH) clen[i] = 0;
+  return bestlength;
+}

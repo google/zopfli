@@ -84,6 +84,14 @@ Good value: e.g. 8192.
 #define ZOPFLI_MAX_CHAIN_HITS 8192
 
 /*
+Hash chain hits examined per position when collecting, for each of the 30
+distance symbols, the longest match within that symbol's range. The longest
+match overall still comes from the full ZOPFLI_MAX_CHAIN_HITS search; this
+shallower search only adds alternative distance symbols.
+*/
+#define ZOPFLI_CLASS_CHAIN_HITS 16
+
+/*
 Whether to use the longest match cache for ZopfliFindLongestMatch. This cache
 consumes a lot of memory but speeds it up. No effect on compression size.
 */

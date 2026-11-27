@@ -139,4 +139,14 @@ void ZopfliLZ77Greedy(ZopfliBlockState* s, const unsigned char* in,
                       size_t instart, size_t inend,
                       ZopfliLZ77Store* store, ZopfliHash* h);
 
+/*
+For each of the 30 deflate distance symbols, finds the longest match whose
+distance has that symbol, examining up to ZOPFLI_CLASS_CHAIN_HITS hash chain
+entries. clen[i] is 0 when no match of at least ZOPFLI_MIN_MATCH was found
+for symbol i. Returns the longest length found.
+*/
+unsigned short ZopfliFindClassMatches(const ZopfliHash* h,
+    const unsigned char* array, size_t pos, size_t size,
+    unsigned short* clen, unsigned short* cdist);
+
 #endif  /* ZOPFLI_LZ77_H_ */
